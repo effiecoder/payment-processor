@@ -29,11 +29,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
-                .requestMatchers("/static/**").permitAll()
-                .requestMatchers("/index.html").permitAll()
-                .requestMatchers("/*.js").permitAll()
-                .requestMatchers("/*.css").permitAll()
-                .requestMatchers("/").permitAll()
+                .requestMatchers("/", "/index.html", "/*.css", "/*.js", "/favicon.ico").permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
