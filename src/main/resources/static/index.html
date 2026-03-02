@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Processor</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Login Screen -->
+        <div id="login-screen" class="screen">
+            <div class="login-box">
+                <h1>💰 Payment Processor</h1>
+                <form id="login-form">
+                    <input type="text" id="username" placeholder="Username" required>
+                    <input type="password" id="password" placeholder="Password" required>
+                    <button type="submit">Zaloguj</button>
+                </form>
+                <p id="login-error" class="error hidden"></p>
+            </div>
+        </div>
+
+        <!-- Main Screen -->
+        <div id="main-screen" class="screen hidden">
+            <header>
+                <h1>💰 Payment Processor</h1>
+                <div class="header-actions">
+                    <button id="refresh-btn" class="icon-btn">🔄</button>
+                    <button id="logout-btn" class="icon-btn">🚪</button>
+                </div>
+            </header>
+
+            <div class="toolbar">
+                <select id="status-filter">
+                    <option value="">Wszystkie statusy</option>
+                    <option value="RECEIVED">Odebrane</option>
+                    <option value="VALIDATED">Zwalidowane</option>
+                    <option value="PENDING_APPROVAL">Oczekuje na zatwierdzenie</option>
+                    <option value="AUTHORIZED">Autoryzowane</option>
+                    <option value="APPROVED">Zatwierdzone</option>
+                    <option value="REJECTED">Odrzucone</option>
+                    <option value="SUSPENDED">Wstrzymane</option>
+                    <option value="SENT_TO_CLEARING">Wysłane do clearingu</option>
+                </select>
+                <button id="new-transaction-btn" class="btn btn-primary">+ Nowa transakcja</button>
+            </div>
+
+            <div class="transactions-list" id="transactions-list">
+                <!-- Transactions will be loaded here -->
+            </div>
+
+            <div class="pagination" id="pagination">
+                <button id="prev-page">← Poprzednia</button>
+                <span id="page-info">Strona 1</span>
+                <button id="next-page">Następna →</button>
+            </div>
+        </div>
+
+        <!-- Transaction Detail Modal -->
+        <div id="transaction-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Szczegóły transakcji</h2>
+                    <button class="close-btn" id="close-modal">×</button>
+                </div>
+                <div class="modal-body" id="transaction-details">
+                    <!-- Transaction details will be loaded here -->
+                </div>
+                <div class="modal-actions" id="modal-actions">
+                    <!-- Action buttons -->
+                </div>
+            </div>
+        </div>
+
+        <!-- New Transaction Modal -->
+        <div id="new-transaction-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Nowa transakcja</h2>
+                    <button class="close-btn" id="close-new-modal">×</button>
+                </div>
+                <form id="new-transaction-form">
+                    <div class="form-group">
+                        <label>ID transakcji (pain)</label>
+                        <input type="text" name="transactionId" required>
+                    </div>
+                    <div class="form-group">
+                        <label>ID wiadomości (pain)</label>
+                        <input type="text" name="painMessageId" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Kwota</label>
+                        <input type="number" step="0.01" name="amount" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Waluta</label>
+                        <select name="currency" required>
+                            <option value="PLN">PLN</option>
+                            <option value="EUR">EUR</option>
+                            <option value="USD">USD</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Data waluty</label>
+                        <input type="date" name="valueDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Nazwa nadawcy</label>
+                        <input type="text" name="senderName">
+                    </div>
+                    <div class="form-group">
+                        <label>Rachunek nadawcy (IBAN)</label>
+                        <input type="text" name="senderAccount" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Nazwa odbiorcy</label>
+                        <input type="text" name="receiverName">
+                    </div>
+                    <div class="form-group">
+                        <label>Rachunek odbiorcy (IBAN)</label>
+                        <input type="text" name="receiverAccount" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Tytuł płatności</label>
+                        <textarea name="paymentTitle" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Utwórz</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Edit Transaction Modal -->
+        <div id="edit-transaction-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Edytuj transakcję</h2>
+                    <button class="close-btn" id="close-edit-modal">×</button>
+                </div>
+                <form id="edit-transaction-form">
+                    <input type="hidden" name="id">
+                    <div class="form-group">
+                        <label>Kwota</label>
+                        <input type="number" step="0.01" name="amount">
+                    </div>
+                    <div class="form-group">
+                        <label>Data waluty</label>
+                        <input type="date" name="valueDate">
+                    </div>
+                    <div class="form-group">
+                        <label>Tytuł płatności</label>
+                        <textarea name="paymentTitle" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Zapisz</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

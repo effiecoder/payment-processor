@@ -18,6 +18,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     
     List<Transaction> findByStatus(TransactionStatus status);
     
+    List<Transaction> findByStatusIn(List<TransactionStatus> statuses);
+    
     Page<Transaction> findByStatusIn(List<TransactionStatus> statuses, Pageable pageable);
     
     Page<Transaction> findByCreatedAtBetween(LocalDate startDate, LocalDate endDate, Pageable pageable);
