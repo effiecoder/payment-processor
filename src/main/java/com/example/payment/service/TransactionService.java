@@ -9,9 +9,9 @@ import com.example.payment.validation.IbanValidator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -39,63 +39,139 @@ public class TransactionService {
     }
 
     @Transactional
-    public Transaction createTransaction(
-            String painMessageId,
-            String transactionId,
-            String amount,
-            String currency,
-            LocalDate valueDate,
-            String senderName,
-            String senderAccount,
-            String receiverName,
-            String receiverAccount,
-            String paymentTitle) {
+    public Transaction createTransaction(Map<String, String> request) {
+        // Extract main fields
+        String amount = request.get("amount");
+        String currency = request.get("currency");
+        String valueDate = request.get("valueDate");
+        
+        // Get IBANs (support both old and new field names)
+        String senderIban = request.get("debtorAccountIban") != null ? 
+            request.get("debtorAccountIban") : request.get("senderAccount");
+        String receiverIban = request.get("creditorAccountIban") != null ? 
+            request.get("creditorAccountIban") : request.get("receiverAccount");
 
         // Validate amount
-        var amountResult = amountValidator.validate(new java.math.BigDecimal(amount));
+        var amountResult = amountValidator.validate(new BigDecimal(amount));
         if (!amountResult.isValid()) {
             throw new IllegalArgumentException("Invalid amount: " + amountResult.getErrorMessage());
         }
 
         // Validate sender IBAN
-        var senderResult = ibanValidator.validate(senderAccount);
-        if (!senderResult.isValid()) {
-            throw new IllegalArgumentException("Invalid sender IBAN: " + senderResult.getErrorMessage());
+        if (senderIban != null && !senderIban.isEmpty()) {
+            var senderResult = ibanValidator.validate(senderIban);
+            if (!senderResult.isValid()) {
+                throw new IllegalArgumentException("Invalid sender IBAN: " + senderResult.getErrorMessage());
+            }
         }
 
         // Validate receiver IBAN
-        var receiverResult = ibanValidator.validate(receiverAccount);
-        if (!receiverResult.isValid()) {
-            throw new IllegalArgumentException("Invalid receiver IBAN: " + receiverResult.getErrorMessage());
+        if (receiverIban != null && !receiverIban.isEmpty()) {
+            var receiverResult = ibanValidator.validate(receiverIban);
+            if (!receiverResult.isValid()) {
+                throw new IllegalArgumentException("Invalid receiver IBAN: " + receiverResult.getErrorMessage());
+            }
         }
 
         // Validate value date
-        var dateResult = dateValidator.validate(valueDate);
+        var dateResult = dateValidator.validate(LocalDate.parse(valueDate));
         if (!dateResult.isValid()) {
             throw new IllegalArgumentException("Invalid value date: " + dateResult.getErrorMessage());
         }
 
-        // Validate payment title (basic XSS protection)
-        if (paymentTitle != null && paymentTitle.length() > 140) {
-            throw new IllegalArgumentException("Payment title too long (max 140 characters)");
-        }
-
         // Check for idempotency
-        if (transactionRepository.existsByTransactionIdAndPainMessageId(transactionId, painMessageId)) {
-            throw new IllegalArgumentException("Duplicate transaction: " + transactionId);
+        String transactionId = request.get("transactionId");
+        String painMessageId = request.get("messageId") != null ? request.get("messageId") : request.get("painMessageId");
+        if (transactionId != null && painMessageId != null) {
+            if (transactionRepository.existsByTransactionIdAndPainMessageId(transactionId, painMessageId)) {
+                throw new IllegalArgumentException("Duplicate transaction: " + transactionId);
+            }
         }
 
         Transaction tx = new Transaction();
-        tx.setPainMessageId(painMessageId);
-        tx.setTransactionId(transactionId);
-        tx.setAmount(new java.math.BigDecimal(amount));
+        
+        // ISO20022 Header
+        tx.setMessageId(request.get("messageId") != null ? request.get("messageId") : UUID.randomUUID().toString());
+        tx.setMessageType(request.get("messageType") != null ? request.get("messageType") : "pain.001");
+        tx.setCreationDateTime(Instant.now());
+        
+        // Payment Instruction
+        tx.setPaymentInstructionId(request.get("paymentInstructionId"));
+        tx.setPaymentMethod(request.get("paymentMethod") != null ? request.get("paymentMethod") : "TRN");
+        
+        if (request.get("batchBooking") != null) {
+            tx.setBatchBooking(Boolean.parseBoolean(request.get("batchBooking")));
+        }
+        
+        if (request.get("requestedExecutionDate") != null) {
+            tx.setRequestedExecutionDate(LocalDate.parse(request.get("requestedExecutionDate")));
+        }
+        
+        tx.setChargeBearer(request.get("chargeBearer") != null ? request.get("chargeBearer") : "SLEV");
+        
+        // Amount & Currency
+        tx.setAmount(new BigDecimal(amount));
         tx.setCurrency(currency);
-        tx.setValueDate(valueDate);
-        tx.setSenderName(senderName);
-        tx.setSenderAccount(senderAccount);
-        tx.setReceiverName(receiverName);
-        tx.setReceiverAccount(receiverAccount);
-        tx.setPaymentTitle(paymentTitle);
+        tx.setValueDate(LocalDate.parse(valueDate));
+        
+        // Instructed Amount (ISO20022)
+        tx.setInstructedAmount(new BigDecimal(amount));
+        tx.setInstructedAmountCurrency(currency);
+        
+        // Debtor (Nadawca)
+        tx.setDebtorName(request.get("debtorName"));
+        tx.setDebtorLegalName(request.get("debtorLegalName"));
+        tx.setDebtorAccountIban(senderIban);
+        tx.setDebtorAgentBic(request.get("debtorAgentBic"));
+        tx.setDebtorAgentName(request.get("debtorAgentName"));
+        tx.setDebtorAddressLine(request.get("debtorAddressLine"));
+        tx.setDebtorCountry(request.get("debtorCountry"));
+        
+        // Legacy support
+        tx.setSenderName(tx.getDebtorName());
+        tx.setSenderAccount(tx.getDebtorAccountIban());
+        
+        // Creditor (Odbiorca)
+        tx.setCreditorName(request.get("creditorName"));
+        tx.setCreditorLegalName(request.get("creditorLegalName"));
+        tx.setCreditorAccountIban(receiverIban);
+        tx.setCreditorAgentBic(request.get("creditorAgentBic"));
+        tx.setCreditorAgentName(request.get("creditorAgentName"));
+        tx.setCreditorAddressLine(request.get("creditorAddressLine"));
+        tx.setCreditorCountry(request.get("creditorCountry"));
+        
+        // Legacy support
+        tx.setReceiverName(tx.getCreditorName());
+        tx.setReceiverAccount(tx.getCreditorAccountIban());
+        
+        // Remittance Information
+        tx.setRemittanceUnstructured(request.get("remittanceUnstructured"));
+        tx.setRemittanceReference(request.get("remittanceReference"));
+        tx.setRemittanceStructuredType(request.get("remittanceStructuredType"));
+        tx.setRemittanceStructuredIssuer(request.get("remittanceStructuredIssuer"));
+        
+        // Legacy support
+        tx.setPaymentTitle(tx.getRemittanceUnstructured());
+        
+        // Purpose
+        tx.setPurposeCode(request.get("purposeCode"));
+        tx.setPurposeProprietary(request.get("purposeProprietary"));
+        
+        // Transaction ID
+        tx.setTransactionId(transactionId);
+        tx.setPainMessageId(painMessageId);
+        
+        // Ultimate Parties
+        tx.setUltimateDebtorName(request.get("ultimateDebtorName"));
+        tx.setUltimateDebtorAccountIban(request.get("ultimateDebtorAccountIban"));
+        tx.setUltimateCreditorName(request.get("ultimateCreditorName"));
+        tx.setUltimateCreditorAccountIban(request.get("ultimateCreditorAccountIban"));
+        
+        // Initiating Party
+        tx.setInitiatingPartyName(request.get("initiatingPartyName"));
+        tx.setInitiatingPartyLegalId(request.get("initiatingPartyLegalId"));
+        
+        // Set initial status
         tx.setStatus(TransactionStatus.RECEIVED);
 
         tx = transactionRepository.save(tx);
@@ -147,6 +223,7 @@ public class TransactionService {
                 throw new IllegalArgumentException("Payment title too long");
             }
             tx.setPaymentTitle(paymentTitle);
+            tx.setRemittanceUnstructured(paymentTitle);
         }
 
         tx.setStatus(TransactionStatus.VALIDATED);
@@ -155,7 +232,7 @@ public class TransactionService {
     }
 
     public Map<String, Long> getStatusCounts() {
-        Map<String, Long> counts = new LinkedHashMap<>();
+        Map<String, Long> counts = new java.util.LinkedHashMap<>();
         
         // Order matters - main flow
         counts.put("RECEIVED", transactionRepository.countByStatus(TransactionStatus.RECEIVED));

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.25.xsd">
+    
+    <!-- Add ISO20022 columns to transactions -->
+    <changeSet id="006" author="effie">
+        <!-- ISO20022 Group Header -->
+        <addColumn tableName="transactions">
+            <column name="message_id" type="VARCHAR(35)"/>
+            <column name="message_type" type="VARCHAR(10)"/>
+            <column name="creation_date_time" type="TIMESTAMP"/>
+            <column name="number_of_transactions" type="INT"/>
+            <column name="control_sum" type="DECIMAL(19,4)"/>
+            
+            <!-- Payment Instruction -->
+            <column name="payment_instruction_id" type="VARCHAR(35)"/>
+            <column name="payment_method" type="VARCHAR(3)"/>
+            <column name="batch_booking" type="BOOLEAN"/>
+            <column name="requested_execution_date" type="DATE"/>
+            <column name="charge_bearer" type="VARCHAR(4)"/>
+            
+            <!-- Debtor -->
+            <column name="debtor_name" type="VARCHAR(140)"/>
+            <column name="debtor_legal_name" type="VARCHAR(35)"/>
+            <column name="debtor_account_iban" type="VARCHAR(34)"/>
+            <column name="debtor_account_other_id" type="VARCHAR(34)"/>
+            <column name="debtor_agent_bic" type="VARCHAR(11)"/>
+            <column name="debtor_agent_name" type="VARCHAR(140)"/>
+            <column name="debtor_address_line" type="VARCHAR(70)"/>
+            <column name="debtor_country" type="VARCHAR(2)"/>
+            
+            <!-- Creditor -->
+            <column name="creditor_name" type="VARCHAR(140)"/>
+            <column name="creditor_legal_name" type="VARCHAR(35)"/>
+            <column name="creditor_account_iban" type="VARCHAR(34)"/>
+            <column name="creditor_account_other_id" type="VARCHAR(34)"/>
+            <column name="creditor_agent_bic" type="VARCHAR(11)"/>
+            <column name="creditor_agent_name" type="VARCHAR(140)"/>
+            <column name="creditor_address_line" type="VARCHAR(70)"/>
+            <column name="creditor_country" type="VARCHAR(2)"/>
+            
+            <!-- Amount Details -->
+            <column name="instructed_amount" type="DECIMAL(19,4)"/>
+            <column name="instructed_amount_currency" type="VARCHAR(3)"/>
+            <column name="equivalent_amount" type="DECIMAL(19,4)"/>
+            <column name="equivalent_amount_currency" type="VARCHAR(3)"/>
+            
+            <!-- Settlement -->
+            <column name="settlement_date" type="DATE"/>
+            <column name="settlement_instruction_id" type="VARCHAR(35)"/>
+            <column name="settlement_method" type="VARCHAR(35)"/>
+            
+            <!-- Remittance -->
+            <column name="remittance_reference" type="VARCHAR(35)"/>
+            <column name="remittance_unstructured" type="VARCHAR(140)"/>
+            <column name="remittance_structured_issuer" type="VARCHAR(35)"/>
+            <column name="remittance_structured_type" type="VARCHAR(4)"/>
+            <column name="remittance_structured_reference" type="VARCHAR(35)"/>
+            
+            <!-- Ultimate Parties -->
+            <column name="ultimate_debtor_name" type="VARCHAR(140)"/>
+            <column name="ultimate_debtor_account_iban" type="VARCHAR(34)"/>
+            <column name="ultimate_creditor_name" type="VARCHAR(140)"/>
+            <column name="ultimate_creditor_account_iban" type="VARCHAR(34)"/>
+            
+            <!-- Purpose -->
+            <column name="purpose_code" type="VARCHAR(4)"/>
+            <column name="purpose_proprietary" type="VARCHAR(35)"/>
+            
+            <!-- Regulatory Reporting -->
+            <column name="regulatory_reporting_country" type="VARCHAR(2)"/>
+            <column name="regulatory_reporting_code" type="VARCHAR(3)"/>
+            <column name="regulatory_reporting_amount" type="DECIMAL(19,4)"/>
+            <column name="regulatory_reporting_currency" type="VARCHAR(3)"/>
+            
+            <!-- Related Parties -->
+            <column name="initiating_party_name" type="VARCHAR(140)"/>
+            <column name="initiating_party_legal_id" type="VARCHAR(35)"/>
+            <column name="previous_message_id" type="VARCHAR(35)"/>
+            <column name="previous_message_name_id" type="VARCHAR(35)"/>
+            
+            <!-- Original Transaction -->
+            <column name="original_transaction_id" type="VARCHAR(35)"/>
+            <column name="original_instruction_id" type="VARCHAR(35)"/>
+            <column name="original_end_to_end_id" type="VARCHAR(35)"/>
+            <column name="original_amount" type="DECIMAL(19,4)"/>
+            <column name="original_amount_currency" type="VARCHAR(3)"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

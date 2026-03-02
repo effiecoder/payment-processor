@@ -27,18 +27,7 @@ public class TransactionController {
     @PostMapping
     public ResponseEntity<?> createTransaction(@RequestBody Map<String, String> request) {
         try {
-            Transaction tx = transactionService.createTransaction(
-                    request.get("painMessageId"),
-                    request.get("transactionId"),
-                    request.get("amount"),
-                    request.get("currency"),
-                    LocalDate.parse(request.get("valueDate")),
-                    request.get("senderName"),
-                    request.get("senderAccount"),
-                    request.get("receiverName"),
-                    request.get("receiverAccount"),
-                    request.get("paymentTitle")
-            );
+            Transaction tx = transactionService.createTransaction(request);
             return ResponseEntity.ok(tx);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

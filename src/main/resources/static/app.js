@@ -456,16 +456,51 @@ async function handleNewTransaction(e) {
     
     const form = e.target;
     const data = {
-        transactionId: form.transactionId.value,
-        painMessageId: form.painMessageId.value,
+        // Header
+        messageId: form.messageId.value || null,
+        messageType: 'pain.001',
+        paymentInstructionId: form.paymentInstructionId.value || null,
+        creationDateTime: form.creationDateTime.value ? new Date(form.creationDateTime.value).toISOString() : null,
+        paymentMethod: form.paymentMethod.value || 'TRN',
+        
+        // Amount
         amount: form.amount.value,
         currency: form.currency.value,
         valueDate: form.valueDate.value,
-        senderName: form.senderName.value,
-        senderAccount: form.senderAccount.value,
-        receiverName: form.receiverName.value,
-        receiverAccount: form.receiverAccount.value,
-        paymentTitle: form.paymentTitle.value
+        requestedExecutionDate: form.requestedExecutionDate.value || null,
+        chargeBearer: form.chargeBearer.value || 'SLEV',
+        batchBooking: form.batchBooking.value === 'true',
+        
+        // Debtor
+        debtorName: form.debtorName.value || null,
+        debtorLegalName: form.debtorLegalName.value || null,
+        debtorAccountIban: form.debtorAccountIban.value || null,
+        debtorAgentBic: form.debtorAgentBic.value || null,
+        debtorAddressLine: form.debtorAddressLine.value || null,
+        debtorCountry: form.debtorCountry.value || null,
+        
+        // Creditor
+        creditorName: form.creditorName.value || null,
+        creditorLegalName: form.creditorLegalName.value || null,
+        creditorAccountIban: form.creditorAccountIban.value || null,
+        creditorAgentBic: form.creditorAgentBic.value || null,
+        creditorAddressLine: form.creditorAddressLine.value || null,
+        creditorCountry: form.creditorCountry.value || null,
+        
+        // Remittance
+        remittanceUnstructured: form.remittanceUnstructured.value || null,
+        remittanceReference: form.remittanceReference.value || null,
+        remittanceStructuredType: form.remittanceStructuredType.value || null,
+        
+        // Purpose
+        purposeCode: form.purposeCode.value || null,
+        transactionId: form.transactionId.value || null,
+        
+        // Ultimate Parties
+        ultimateDebtorName: form.ultimateDebtorName.value || null,
+        ultimateDebtorAccountIban: form.ultimateDebtorAccountIban.value || null,
+        ultimateCreditorName: form.ultimateCreditorName.value || null,
+        ultimateCreditorAccountIban: form.ultimateCreditorAccountIban.value || null,
     };
     
     try {
