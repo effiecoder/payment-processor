@@ -323,11 +323,29 @@ body::before {
 
 .status-flow-diagram {
     display: flex;
-    flex-wrap: wrap;
-    gap: 2px;
-    align-items: center;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
     font-size: 11px;
     line-height: 1.8;
+}
+
+.status-flow-diagram .status-box {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-card);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.status-flow-diagram .status-box:first-child {
+    margin-left: 0;
 }
 
 .status-box {
@@ -379,6 +397,37 @@ body::before {
 .status-box[data-status="REJECTED"] { border-color: #ef4444; color: #ef4444; }
 .status-box[data-status="SUSPENDED"] { border-color: #6b7280; color: #6b7280; }
 .status-box[data-status="FAILED"] { border-color: #ef4444; color: #ef4444; }
+
+.flow-arrow {
+    color: var(--accent-primary);
+    font-size: 14px;
+    margin: 0 6px;
+    font-weight: bold;
+    opacity: 0.8;
+}
+
+.status-row-sep {
+    display: block;
+    width: 100%;
+    height: 4px;
+}
+
+.status-row-main {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px;
+}
+
+.status-row-errors {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px dashed var(--border-subtle);
+}
 
 /* Warning - orange */
 .status-box[data-status="PENDING_APPROVAL"],

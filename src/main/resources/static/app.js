@@ -490,20 +490,20 @@ function renderStatusFlow(counts) {
         {key:'FAILED', label:'Failed'}
     ];
     
-    let html = '';
+    // Main flow with arrows - all in one row container
+    let mainHtml = '';
     main.forEach((s, i) => {
-        if (i > 0) html += ' <span style="color:var(--text-muted);font-size:10px;">›</span> ';
-        html += `<span class="status-box ${currentFilter===s.key?'active':''}" data-status="${s.key}" onclick="filterByStatus('${s.key}')"><span class="status-name">${s.label}</span> <span class="status-count">(${counts[s.key]||0})</span></span>`;
+        if (i > 0) mainHtml += '<span class="flow-arrow">➜</span>';
+        mainHtml += `<span class="status-box ${currentFilter===s.key?'active':''}" data-status="${s.key}" onclick="filterByStatus('${s.key}')"><span class="status-name">${s.label}</span> <span class="status-count">(${counts[s.key]||0})</span></span>`;
     });
     
-    html += '<br><span style="display:block;margin:4px 0;"></span>';
-    
-    sec.forEach((s, i) => {
-        if (i > 0) html += ' <span style="color:var(--text-muted);font-size:10px;">›</span> ';
-        html += `<span class="status-box ${currentFilter===s.key?'active':''}" data-status="${s.key}" onclick="filterByStatus('${s.key}')"><span class="status-name">${s.label}</span> <span class="status-count">(${counts[s.key]||0})</span></span>`;
+    // Error/warning statuses - separate row
+    let secHtml = '';
+    sec.forEach(s => {
+        secHtml += `<span class="status-box ${currentFilter===s.key?'active':''}" data-status="${s.key}" onclick="filterByStatus('${s.key}')"><span class="status-name">${s.label}</span> <span class="status-count">(${counts[s.key]||0})</span></span>`;
     });
     
-    container.innerHTML = html;
+    container.innerHTML = `<div class="status-row-main">${mainHtml}</div><div class="status-row-errors">${secHtml}</div>`;
 }
 
 function filterByStatus(status) {
