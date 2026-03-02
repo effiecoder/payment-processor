@@ -579,6 +579,7 @@ function renderStatusFlow(counts) {
         const isActive = currentFilter === status.key;
         html += `
             <div class="status-box ${isActive ? 'active' : ''}" 
+                 data-status="${status.key}"
                  onclick="filterByStatus('${status.key}')">
                 <span class="status-name">${status.label}</span>
                 <span class="status-count">${count}</span>
@@ -597,6 +598,7 @@ function renderStatusFlow(counts) {
         const isActive = currentFilter === status.key;
         html += `
             <div class="status-box ${isActive ? 'active' : ''}" 
+                 data-status="${status.key}"
                  onclick="filterByStatus('${status.key}')">
                 <span class="status-name">${status.label}</span>
                 <span class="status-count">${count}</span>

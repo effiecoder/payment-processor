@@ -345,18 +345,49 @@ body::before {
     border-radius: var(--radius-sm);
     cursor: pointer;
     transition: all var(--transition-fast);
-    border: 1px solid transparent;
+    border: 1px solid var(--border-subtle);
     background: var(--bg-card);
 }
 
 .status-box:hover {
     background: var(--bg-glass-hover);
-    border-color: var(--border-active);
+}
+
+.status-box.active {
+    background: rgba(99, 102, 241, 0.15);
+}
+
+/* Neutral - blue */
+.status-box[data-status="RECEIVED"],
+.status-box[data-status="AUTHORIZING"],
+.status-box[data-status="SENT_TO_CLEARING"] {
+    border-left: 3px solid #3b82f6;
+}
+
+/* Positive - green */
+.status-box[data-status="VALIDATED"],
+.status-box[data-status="AUTHORIZED"],
+.status-box[data-status="APPROVED"],
+.status-box[data-status="COMPLETED"] {
+    border-left: 3px solid #10b981;
+}
+
+/* Warning - orange */
+.status-box[data-status="PENDING_APPROVAL"],
+.status-box[data-status="SUSPENDED"] {
+    border-left: 3px solid #f59e0b;
+}
+
+/* Negative - red */
+.status-box[data-status="REJECTED"],
+.status-box[data-status="FAILED"],
+.status-box[data-status="VALIDATION_FAILED"],
+.status-box[data-status="AUTHORIZATION_FAILED"] {
+    border-left: 3px solid #ef4444;
 }
 
 .status-box.active {
     border-color: var(--accent-primary);
-    background: rgba(99, 102, 241, 0.15);
 }
 
 .status-box .status-name {
@@ -383,8 +414,9 @@ body::before {
 
 .status-arrow {
     color: var(--text-muted);
-    font-size: 12px;
-    opacity: 0.5;
+    font-size: 14px;
+    font-weight: 300;
+    opacity: 0.4;
 }
 
 .clear-filter-btn {
