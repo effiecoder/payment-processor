@@ -207,3 +207,14 @@ Projekt podzielony na zadania zgodnie z metodologią incrementalną. Każde zada
 | Wersja | Data | Opis |
 |--------|------|------|
 | 1.0 | 2026-03-01 | Initial task plan |
+
+---
+
+## Sprint 9: Status Flow Diagram
+
+### Zadanie 9.1: Status Flow Diagram
+- [ ] Utworzenie wizualnego diagramu przepływu statusów
+- [ ] Wyświetlanie licznika transakcji dla każdego statusu
+- [ ] Filtrowanie listy po kliknięciu w status
+- [ ] **TEST**: Sprawdzenie w przeglądarce
+- **COMMIT**: "Add: Status flow diagram with counters"

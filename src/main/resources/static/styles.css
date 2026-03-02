@@ -415,3 +415,133 @@ header h1 {
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+
+/* Status Flow Diagram */
+.status-flow {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.status-flow-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--gray-700);
+    margin-bottom: 15px;
+}
+
+.status-flow-diagram {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.status-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 90px;
+    border: 2px solid transparent;
+}
+
+.status-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.status-box.active {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.status-box .status-name {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+.status-box .status-count {
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.status-box .status-label {
+    font-size: 10px;
+    color: var(--gray-500);
+    margin-top: 2px;
+}
+
+/* Status colors for flow boxes */
+.status-box-RECEIVED { background: #dbeafe; }
+.status-box-RECEIVED .status-name { color: #1d4ed8; }
+
+.status-box-VALIDATED { background: #dcfce7; }
+.status-box-VALIDATED .status-name { color: #15803d; }
+
+.status-box-AUTHORIZING { background: #fef3c7; }
+.status-box-AUTHORIZING .status-name { color: #b45309; }
+
+.status-box-AUTHORIZED { background: #bbf7d0; }
+.status-box-AUTHORIZED .status-name { color: #16a34a; }
+
+.status-box-PENDING_APPROVAL { background: #fed7aa; }
+.status-box-PENDING_APPROVAL .status-name { color: #ea580c; }
+
+.status-box-APPROVED { background: #86efac; }
+.status-box-APPROVED .status-name { color: #16a34a; }
+
+.status-box-SENT_TO_CLEARING { background: #c7d2fe; }
+.status-box-SENT_TO_CLEARING .status-name { color: #4338ca; }
+
+.status-box-COMPLETED { background: #4ade80; }
+.status-box-COMPLETED .status-name { color: #15803d; }
+
+.status-box-REJECTED { background: #fecaca; }
+.status-box-REJECTED .status-name { color: #dc2626; }
+
+.status-box-SUSPENDED { background: #f3f4f6; }
+.status-box-SUSPENDED .status-name { color: #6b7280; }
+
+.status-box-FAILED { background: #fca5a5; }
+.status-box-FAILED .status-name { color: #dc2626; }
+
+.status-box-VALIDATION_FAILED { background: #fecaca; }
+.status-box-VALIDATION_FAILED .status-name { color: #dc2626; }
+
+.status-box-AUTHORIZATION_FAILED { background: #fecaca; }
+.status-box-AUTHORIZATION_FAILED .status-name { color: #dc2626; }
+
+/* Status flow arrows */
+.status-arrow {
+    color: var(--gray-400);
+    font-size: 16px;
+}
+
+.clear-filter-btn {
+    margin-top: 15px;
+    padding: 8px 16px;
+    background: var(--gray-100);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--gray-600);
+    transition: all 0.2s;
+    display: none;
+}
+
+.clear-filter-btn:hover {
+    background: var(--gray-200);
+}
+
+.clear-filter-btn.visible {
+    display: inline-block;
+}

@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (token) {
         showMainScreen();
         loadTransactions();
+        loadStatusCounts();
     } else {
         showLoginScreen();
     }
@@ -33,7 +34,10 @@ function setupEventListeners() {
     // Login form
     document.getElementById('login-form').addEventListener('submit', handleLogin);
     document.getElementById('logout-btn').addEventListener('click', handleLogout);
-    document.getElementById('refresh-btn').addEventListener('click', loadTransactions);
+    document.getElementById('refresh-btn').addEventListener('click', () => {
+        loadTransactions();
+        loadStatusCounts();
+    });
     
     // Filters
     document.getElementById('status-filter').addEventListener('change', (e) => {
@@ -460,6 +464,104 @@ function formatDateTime(dateStr) {
     return date.toLocaleString('pl-PL');
 }
 
+// Status Flow Diagram
+async function loadStatusCounts() {
+    try {
+        const response = await apiCall('/transactions/status-counts');
+        const counts = await response.json();
+        renderStatusFlow(counts);
+    } catch (error) {
+        console.error('Error loading status counts:', error);
+    }
+}
+
+function renderStatusFlow(counts) {
+    const container = document.getElementById('status-flow-diagram');
+    
+    // Main flow order
+    const mainFlow = [
+        { key: 'RECEIVED', label: 'Odebrane' },
+        { key: 'VALIDATED', label: 'Zwalidowane' },
+        { key: 'AUTHORIZING', label: 'Autoryzacja' },
+        { key: 'AUTHORIZED', label: 'Autoryzowane' },
+        { key: 'PENDING_APPROVAL', label: 'Oczekuje' },
+        { key: 'APPROVED', label: 'Zatwierdzone' },
+        { key: 'SENT_TO_CLEARING', label: 'Wysłane' },
+        { key: 'COMPLETED', label: 'Zakończone' }
+    ];
+    
+    // Secondary statuses
+    const secondaryFlow = [
+        { key: 'VALIDATION_FAILED', label: 'Błąd walidacji' },
+        { key: 'AUTHORIZATION_FAILED', label: 'Błąd autoryzacji' },
+        { key: 'REJECTED', label: 'Odrzucone' },
+        { key: 'SUSPENDED', label: 'Wstrzymane' },
+        { key: 'FAILED', label: 'Nie powiodło się' }
+    ];
+    
+    let html = '';
+    
+    // Main flow with arrows
+    mainFlow.forEach((status, index) => {
+        const count = counts[status.key] || 0;
+        const isActive = currentFilter === status.key;
+        html += `
+            <div class="status-box status-box-${status.key} ${isActive ? 'active' : ''}" 
+                 onclick="filterByStatus('${status.key}')">
+                <span class="status-name">${status.label}</span>
+                <span class="status-count">${count}</span>
+            </div>
+        `;
+        if (index < mainFlow.length - 1) {
+            html += '<span class="status-arrow">→</span>';
+        }
+    });
+    
+    html += '<div style="width:100%; height:10px;"></div>';
+    
+    // Secondary flow
+    secondaryFlow.forEach((status, index) => {
+        const count = counts[status.key] || 0;
+        const isActive = currentFilter === status.key;
+        html += `
+            <div class="status-box status-box-${status.key} ${isActive ? 'active' : ''}" 
+                 onclick="filterByStatus('${status.key}')">
+                <span class="status-name">${status.label}</span>
+                <span class="status-count">${count}</span>
+            </div>
+        `;
+        if (index < secondaryFlow.length - 1) {
+            html += '<span class="status-arrow">→</span>';
+        }
+    });
+    
+    container.innerHTML = html;
+    
+    // Show/hide clear button
+    const clearBtn = document.getElementById('clear-filter-btn');
+    if (currentFilter) {
+        clearBtn.classList.add('visible');
+    } else {
+        clearBtn.classList.remove('visible');
+    }
+}
+
+function filterByStatus(status) {
+    currentFilter = status;
+    document.getElementById('status-filter').value = status;
+    currentPage = Transactions();
+    load0;
+    loadStatusCounts();
+}
+
+function clearStatusFilter() {
+    currentFilter = '';
+    document.getElementById('status-filter').value = '';
+    currentPage = 0;
+    loadTransactions();
+    loadStatusCounts();
+}
+
 // Make functions global
 window.viewTransaction = viewTransaction;
 window.approveTransaction = approveTransaction;
@@ -467,3 +569,5 @@ window.rejectTransaction = rejectTransaction;
 window.suspendTransaction = suspendTransaction;
 window.resumeTransaction = resumeTransaction;
 window.editTransaction = editTransaction;
+window.filterByStatus = filterByStatus;
+window.clearStatusFilter = clearStatusFilter;

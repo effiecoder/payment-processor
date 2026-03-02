@@ -11,7 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -150,5 +152,28 @@ public class TransactionService {
         tx.setStatus(TransactionStatus.VALIDATED);
         
         return transactionRepository.save(tx);
+    }
+
+    public Map<String, Long> getStatusCounts() {
+        Map<String, Long> counts = new LinkedHashMap<>();
+        
+        // Order matters - main flow
+        counts.put("RECEIVED", transactionRepository.countByStatus(TransactionStatus.RECEIVED));
+        counts.put("VALIDATED", transactionRepository.countByStatus(TransactionStatus.VALIDATED));
+        counts.put("AUTHORIZING", transactionRepository.countByStatus(TransactionStatus.AUTHORIZING));
+        counts.put("AUTHORIZED", transactionRepository.countByStatus(TransactionStatus.AUTHORIZED));
+        counts.put("PENDING_APPROVAL", transactionRepository.countByStatus(TransactionStatus.PENDING_APPROVAL));
+        counts.put("APPROVED", transactionRepository.countByStatus(TransactionStatus.APPROVED));
+        counts.put("SENT_TO_CLEARING", transactionRepository.countByStatus(TransactionStatus.SENT_TO_CLEARING));
+        counts.put("COMPLETED", transactionRepository.countByStatus(TransactionStatus.COMPLETED));
+        
+        // Secondary statuses
+        counts.put("VALIDATION_FAILED", transactionRepository.countByStatus(TransactionStatus.VALIDATION_FAILED));
+        counts.put("AUTHORIZATION_FAILED", transactionRepository.countByStatus(TransactionStatus.AUTHORIZATION_FAILED));
+        counts.put("REJECTED", transactionRepository.countByStatus(TransactionStatus.REJECTED));
+        counts.put("SUSPENDED", transactionRepository.countByStatus(TransactionStatus.SUSPENDED));
+        counts.put("FAILED", transactionRepository.countByStatus(TransactionStatus.FAILED));
+        
+        return counts;
     }
 }

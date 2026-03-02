@@ -133,4 +133,9 @@ public class TransactionController {
                 .filter(tx -> tx.getStatus() == status)
                 .toList());
     }
+
+    @GetMapping("/status-counts")
+    public ResponseEntity<Map<String, Long>> getStatusCounts() {
+        return ResponseEntity.ok(transactionService.getStatusCounts());
+    }
 }
