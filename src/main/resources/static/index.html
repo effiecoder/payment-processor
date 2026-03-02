@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Flow Status</title>
+    <title>Payment Processor</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="app-container">
         <!-- Login Screen -->
-        <div id="login-screen" class="login-screen">
+        <div id="login-screen" class="screen login-screen">
             <div class="login-box">
-                <h1>💎 Payment Flow</h1>
-                <p class="subtitle">System płatności ISO20022</p>
+                <h1>💎 Payment Processor</h1>
+                <p class="subtitle">Nowoczesny system płatności ISO20022</p>
                 <form id="login-form">
                     <div class="input-group">
                         <input type="text" id="username" placeholder="Nazwa użytkownika" required>
@@ -25,61 +25,260 @@
                     </div>
                     <button type="submit">Zaloguj się</button>
                 </form>
+                <p id="login-error" class="error hidden"></p>
             </div>
         </div>
 
-        <!-- Main App -->
-        <div id="main-app" class="hidden">
-            <!-- Header -->
-            <header class="app-header">
-                <div class="header-left">
-                    <div class="header-logo">💎</div>
-                    <span class="header-title">Payment Flow Status</span>
-                </div>
-                <div class="header-right">
-                    <button class="header-btn">🔔</button>
-                    <div class="header-avatar"></div>
+        <!-- Main Screen -->
+        <div id="main-screen" class="screen main-screen hidden">
+            <header>
+                <h1>💎 Payment Processor</h1>
+                <div class="header-actions">
+                    <button id="refresh-btn" class="icon-btn" title="Odśwież">↻</button>
+                    <button id="logout-btn" class="icon-btn" title="Wyloguj">⏻</button>
                 </div>
             </header>
 
-            <!-- Status Bar -->
-            <div class="status-bar">
-                <div class="status-summary">
-                    <span class="status-summary-dot"></span>
-                    <span>Weryfikacja (<span id="total-count">0</span>)</span>
-                </div>
-                <div class="status-steps" id="status-steps"></div>
+            <!-- Status Flow -->
+            <div class="status-flow" id="status-flow">
+                <div class="status-flow-title">Przépływ statusów</div>
+                <div class="status-flow-diagram" id="status-flow-diagram"></div>
             </div>
 
-            <!-- Main Content -->
-            <div class="main-content">
-                <!-- Left Panel -->
-                <div class="left-panel">
-                    <div class="toolbar">
-                        <input type="text" class="search-input" id="search-input" placeholder="Wszystkie">
-                        <button class="filter-btn">⚙️</button>
-                        <button class="new-tx-btn" id="new-tx-btn">+ Nowa</button>
-                    </div>
-                    <div class="tx-list" id="tx-list"></div>
+            <!-- Main Panel: Filters + List OR Filters + Detail + List -->
+            <div class="main-panel" id="main-panel">
+                <!-- Toolbar -->
+                <div class="toolbar">
+                    <select id="status-filter">
+                        <option value="">📋 Wszystkie</option>
+                        <option value="RECEIVED">📥 Odebrane</option>
+                        <option value="VALIDATED">✅ Zwalidowane</option>
+                        <option value="PENDING_APPROVAL">⏳ Oczekuje</option>
+                        <option value="AUTHORIZED">🔐 Autoryzowane</option>
+                        <option value="APPROVED">✓ Zatwierdzone</option>
+                        <option value="REJECTED">✕ Odrzucone</option>
+                        <option value="SUSPENDED">⏸ Wstrzymane</option>
+                    </select>
+                    <button id="new-transaction-btn" class="btn btn-primary">➕ Nowa transakcja</button>
                 </div>
 
-                <!-- Right Panel -->
-                <div class="right-panel" id="right-panel">
-                    <div class="right-panel-empty" id="empty-state">
-                        Wybierz transakcję z listy
-                    </div>
-                    
-                    <!-- Detail View -->
-                    <div class="hidden" id="detail-view">
-                        <div class="detail-header">
-                            <div class="detail-title">
-                                <span>📁</span>
-                                <span>Transakcja #<span id="detail-id"></span></span>
-                            </div>
-                            <button class="detail-close" id="close-detail">✕</button>
+                <!-- Content Area: List + Optional Detail -->
+                <div class="content-area">
+                    <!-- Transaction List -->
+                    <div class="transactions-panel" id="transactions-panel">
+                        <div class="transactions-list" id="transactions-list"></div>
+                        <div class="pagination">
+                            <button id="prev-page">← Poprzednia</button>
+                            <span id="page-info">Strona 1</span>
+                            <button id="next-page">Następna →</button>
                         </div>
-                        <div class="detail-content" id="detail-content"></div>
-                        <div class="action-bar" id="action-bar"></div>
+                    </div>
+
+                    <!-- Detail Panel (slides in) -->
+                    <div class="detail-panel" id="detail-panel">
+                        <div class="detail-empty" id="detail-empty">
+                            <div class="icon">👈</div>
+                            <p>Wybierz transakcję z listy<br>lub dodaj nową</p>
+                        </div>
+
+                        <div class="detail-content hidden" id="detail-content">
+                            <div class="detail-header">
+                                <h2 id="detail-title">Szczegóły transakcji</h2>
+                                <button class="close-detail" id="close-detail">✕</button>
+                            </div>
+                            <div class="detail-scroll">
+                                <form id="transaction-form">
+                                    <!-- Nagłówek wiadomości -->
+                                    <fieldset class="form-section">
+                                        <legend>📨 Nagłówek wiadomości</legend>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Message ID</label>
+                                                <input type="text" name="messageId" readonly>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Payment Instruction ID</label>
+                                                <input type="text" name="paymentInstructionId" readonly>
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Data utworzenia</label>
+                                                <input type="datetime-local" name="creationDateTime" readonly>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Metoda płatności</label>
+                                                <select name="paymentMethod" disabled>
+                                                    <option value="TRN">TRN - Transfer</option>
+                                                    <option value="TRA">TRA - Treasury</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </fieldset>
+
+                                    <!-- Dane płatności -->
+                                    <fieldset class="form-section">
+                                        <legend>💰 Dane płatności</legend>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Kwota</label>
+                                                <input type="number" step="0.01" name="amount" required>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Waluta</label>
+                                                <select name="currency" required>
+                                                    <option value="PLN">PLN</option>
+                                                    <option value="EUR">EUR</option>
+                                                    <option value="USD">USD</option>
+                                                    <option value="GBP">GBP</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Data waluty</label>
+                                                <input type="date" name="valueDate" required>
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Data realizacji</label>
+                                                <input type="date" name="requestedExecutionDate">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Charge Bearer</label>
+                                                <select name="chargeBearer">
+                                                    <option value="SLEV">SLEV</option>
+                                                    <option value="SHAR">SHAR</option>
+                                                    <option value="DEBT">DEBT</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </fieldset>
+
+                                    <!-- Nadawca -->
+                                    <fieldset class="form-section">
+                                        <legend>📤 Nadawca</legend>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Nazwa</label>
+                                                <input type="text" name="debtorName">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>LEI</label>
+                                                <input type="text" name="debtorLegalName">
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>IBAN</label>
+                                                <input type="text" name="debtorAccountIban" required>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>BIC</label>
+                                                <input type="text" name="debtorAgentBic">
+                                            </div>
+                                        </div>
+                                    </fieldset>
+
+                                    <!-- Odbiorca -->
+                                    <fieldset class="form-section">
+                                        <legend>📥 Odbiorca</legend>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Nazwa</label>
+                                                <input type="text" name="creditorName">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>LEI</label>
+                                                <input type="text" name="creditorLegalName">
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>IBAN</label>
+                                                <input type="text" name="creditorAccountIban" required>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>BIC</label>
+                                                <input type="text" name="creditorAgentBic">
+                                            </div>
+                                        </div>
+                                    </fieldset>
+
+                                    <!-- Remittance -->
+                                    <fieldset class="form-section">
+                                        <legend>📝 Remittance</legend>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Tytuł</label>
+                                                <textarea name="remittanceUnstructured" rows="2"></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Referencja</label>
+                                                <input type="text" name="remittanceReference">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Typ</label>
+                                                <select name="remittanceStructuredType">
+                                                    <option value="">Wybierz...</option>
+                                                    <option value="SCOR">SCOR</option>
+                                                    <option value="RF01">RF01</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Kod celu</label>
+                                                <select name="purposeCode">
+                                                    <option value="">Wybierz...</option>
+                                                    <option value="SUPP">SUPP</option>
+                                                    <option value="SALA">SALA</option>
+                                                    <option value="TAXS">TAXS</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Transaction ID</label>
+                                                <input type="text" name="transactionId">
+                                            </div>
+                                        </div>
+                                    </fieldset>
+
+                                    <!-- Status -->
+                                    <fieldset class="form-section" id="status-section" style="display:none;">
+                                        <legend>📋 Status</legend>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Status</label>
+                                                <input type="text" name="status" readonly class="status-readonly">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Utworzono</label>
+                                                <input type="text" name="createdAt" readonly>
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Autoryzowane przez</label>
+                                                <input type="text" name="authorizedBy" readonly>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Zatwierdzone przez</label>
+                                                <input type="text" name="approvedBy" readonly>
+                                            </div>
+                                        </div>
+                                        <div class="form-row" id="rejection-row" style="display:none;">
+                                            <div class="form-group">
+                                                <label style="color: var(--accent-danger);">Powód odrzucenia</label>
+                                                <input type="text" name="rejectionReason" readonly style="color: var(--accent-danger);">
+                                            </div>
+                                        </div>
+                                    </fieldset>
+
+                                    <div class="form-actions" id="form-actions"></div>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

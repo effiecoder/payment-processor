@@ -1,16 +1,30 @@
-// Payment Processor - New UI
+// Payment Processor - Frontend JavaScript
 
 const API_BASE = '/api';
 let token = localStorage.getItem('token');
 let currentPage = 0;
 let currentFilter = '';
-let currentTxId = null;
+let currentViewMode = 'view';
+let currentTransactionId = null;
 
 // DOM Elements
 const screens = {
     login: document.getElementById('login-screen'),
-    main: document.getElementById('main-app')
+    main: document.getElementById('main-screen')
 };
+
+const detailPanel = {
+    panel: document.getElementById('detail-panel'),
+    empty: document.getElementById('detail-empty'),
+    content: document.getElementById('detail-content'),
+    title: document.getElementById('detail-title'),
+    closeBtn: document.getElementById('close-detail'),
+    form: document.getElementById('transaction-form'),
+    formActions: document.getElementById('form-actions'),
+    statusSection: document.getElementById('status-section')
+};
+
+const transactionsPanel = document.getElementById('transactions-panel');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -25,16 +39,52 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function setupEventListeners() {
+    // Login
     document.getElementById('login-form').addEventListener('submit', handleLogin);
-    document.getElementById('new-tx-btn').addEventListener('click', showNewTransaction);
-    document.getElementById('close-detail').addEventListener('click', closeDetail);
-    document.getElementById('search-input').addEventListener('input', handleSearch);
+    document.getElementById('logout-btn').addEventListener('click', handleLogout);
+    document.getElementById('refresh-btn').addEventListener('click', () => {
+        loadTransactions();
+        loadStatusCounts();
+    });
+    
+    // Filters
+    document.getElementById('status-filter').addEventListener('change', (e) => {
+        currentFilter = e.target.value;
+        currentPage = 0;
+        loadTransactions();
+    });
+    
+    // Pagination
+    document.getElementById('prev-page').addEventListener('click', () => {
+        if (currentPage > 0) {
+            currentPage--;
+            loadTransactions();
+        }
+    });
+    
+    document.getElementById('next-page').addEventListener('click', () => {
+        currentPage++;
+        loadTransactions();
+    });
+    
+    // New Transaction
+    document.getElementById('new-transaction-btn').addEventListener('click', showCreateForm);
+    
+    // Close detail
+    detailPanel.closeBtn.addEventListener('click', closeDetail);
+    
+    // Form submit
+    detailPanel.form.addEventListener('submit', handleFormSubmit);
 }
 
+// Auth
 async function handleLogin(e) {
     e.preventDefault();
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
+    const errorEl = document.getElementById('login-error');
+    
+    errorEl.classList.add('hidden');
     
     try {
         const response = await fetch(`${API_BASE}/auth/login`, {
@@ -43,7 +93,7 @@ async function handleLogin(e) {
             body: JSON.stringify({ username, password })
         });
         
-        if (!response.ok) throw new Error('Invalid credentials');
+        if (!response.ok) throw new Error('Nieprawidłowa nazwa użytkownika lub hasło');
         
         const data = await response.json();
         token = data.token;
@@ -53,10 +103,32 @@ async function handleLogin(e) {
         loadTransactions();
         loadStatusCounts();
     } catch (error) {
-        alert('Błąd logowania: ' + error.message);
+        errorEl.textContent = error.message;
+        errorEl.classList.remove('hidden');
     }
 }
 
+function handleLogout() {
+    token = null;
+    localStorage.removeItem('token');
+    showLoginScreen();
+}
+
+// API Helper
+async function apiCall(endpoint, options = {}) {
+    const headers = { 'Content-Type': 'application/json', ...options.headers };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    
+    const response = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
+    
+    if (response.status === 401) {
+        handleLogout();
+        throw new Error('Sesja wygasła');
+    }
+    return response;
+}
+
+// Screens
 function showLoginScreen() {
     screens.login.classList.remove('hidden');
     screens.main.classList.add('hidden');
@@ -67,18 +139,326 @@ function showMainScreen() {
     screens.main.classList.remove('hidden');
 }
 
-// API
-async function apiCall(endpoint, options = {}) {
-    const headers = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+// Detail Panel
+function closeDetail() {
+    detailPanel.panel.classList.remove('open');
+    transactionsPanel.classList.remove('has-detail');
+    currentTransactionId = null;
+}
+
+function openDetail() {
+    detailPanel.panel.classList.add('open');
+    transactionsPanel.classList.add('has-detail');
+}
+
+// Form Modes
+function showCreateForm() {
+    currentViewMode = 'create';
+    currentTransactionId = null;
     
-    const response = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
-    if (response.status === 401) {
-        token = null;
-        localStorage.removeItem('token');
-        showLoginScreen();
+    detailPanel.form.reset();
+    detailPanel.form.querySelectorAll('input, select, textarea').forEach(el => {
+        el.removeAttribute('readonly');
+        el.removeAttribute('disabled');
+    });
+    
+    // Default date
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    detailPanel.form.valueDate.value = tomorrow.toISOString().split('T')[0];
+    
+    detailPanel.title.textContent = '➕ Nowa transakcja ISO20022';
+    detailPanel.statusSection.style.display = 'none';
+    detailPanel.formActions.innerHTML = `<button type="submit" class="btn btn-primary">Utwórz</button>`;
+    
+    detailPanel.empty.classList.add('hidden');
+    detailPanel.content.classList.remove('hidden');
+    openDetail();
+}
+
+async function showViewForm(id) {
+    try {
+        const response = await apiCall(`/transactions/${id}`);
+        const tx = await response.json();
+        
+        currentViewMode = 'view';
+        currentTransactionId = id;
+        
+        fillFormWithTransaction(tx);
+        
+        detailPanel.form.querySelectorAll('input, select, textarea').forEach(el => {
+            el.setAttribute('readonly', true);
+            el.setAttribute('disabled', true);
+        });
+        
+        detailPanel.title.textContent = `📋 Transakcja #${id}`;
+        
+        let actionsHtml = '';
+        if (tx.status === 'PENDING_APPROVAL') {
+            actionsHtml = `
+                <button type="button" class="btn btn-success" onclick="approveTransaction(${id})">✓ Zatwierdź</button>
+                <button type="button" class="btn btn-danger" onclick="rejectTransaction(${id})">✕ Odrzuć</button>
+                <button type="button" class="btn" onclick="showEditForm(${id})">✏️ Edytuj</button>
+                <button type="button" class="btn" onclick="suspendTransaction(${id})">⏸ Wstrzymaj</button>
+            `;
+        } else if (tx.status === 'SUSPENDED') {
+            actionsHtml = `<button type="button" class="btn btn-primary" onclick="resumeTransaction(${id})">▶️ Wznów</button>`;
+        } else if (tx.status === 'AUTHORIZED' || tx.status === 'APPROVED') {
+            actionsHtml = `<button type="button" class="btn" onclick="suspendTransaction(${id})">⏸ Wstrzymaj</button>`;
+        }
+        
+        detailPanel.formActions.innerHTML = actionsHtml;
+        detailPanel.statusSection.style.display = 'block';
+        
+        detailPanel.empty.classList.add('hidden');
+        detailPanel.content.classList.remove('hidden');
+        openDetail();
+    } catch (error) {
+        alert('Błąd: ' + error.message);
     }
-    return response;
+}
+
+async function showEditForm(id) {
+    try {
+        const response = await apiCall(`/transactions/${id}`);
+        const tx = await response.json();
+        
+        currentViewMode = 'edit';
+        currentTransactionId = id;
+        
+        fillFormWithTransaction(tx);
+        
+        detailPanel.form.querySelectorAll('input, select, textarea').forEach(el => {
+            const name = el.name;
+            if (['messageId', 'paymentInstructionId', 'creationDateTime', 'status', 'createdAt', 'authorizedBy', 'approvedBy', 'rejectionReason'].includes(name)) {
+                el.setAttribute('readonly', true);
+                el.setAttribute('disabled', true);
+            } else {
+                el.removeAttribute('readonly');
+                el.removeAttribute('disabled');
+            }
+        });
+        
+        detailPanel.title.textContent = `✏️ Edycja #${id}`;
+        detailPanel.formActions.innerHTML = `<button type="submit" class="btn btn-primary">Zapisz</button>`;
+        detailPanel.statusSection.style.display = 'block';
+        
+        detailPanel.empty.classList.add('hidden');
+        detailPanel.content.classList.remove('hidden');
+        openDetail();
+    } catch (error) {
+        alert('Błąd: ' + error.message);
+    }
+}
+
+function fillFormWithTransaction(tx) {
+    const form = detailPanel.form;
+    const setValue = (name, value) => {
+        const el = form.querySelector(`[name="${name}"]`);
+        if (el) {
+            if (el.type === 'datetime-local' && value) el.value = new Date(value).toISOString().slice(0, 16);
+            else el.value = value || '';
+        }
+    };
+    
+    setValue('messageId', tx.messageId);
+    setValue('paymentInstructionId', tx.paymentInstructionId);
+    setValue('creationDateTime', tx.creationDateTime);
+    setValue('paymentMethod', tx.paymentMethod);
+    setValue('amount', tx.amount);
+    setValue('currency', tx.currency);
+    setValue('valueDate', tx.valueDate);
+    setValue('requestedExecutionDate', tx.requestedExecutionDate);
+    setValue('chargeBearer', tx.chargeBearer);
+    setValue('debtorName', tx.debtorName);
+    setValue('debtorLegalName', tx.debtorLegalName);
+    setValue('debtorAccountIban', tx.debtorAccountIban);
+    setValue('debtorAgentBic', tx.debtorAgentBic);
+    setValue('creditorName', tx.creditorName);
+    setValue('creditorLegalName', tx.creditorLegalName);
+    setValue('creditorAccountIban', tx.creditorAccountIban);
+    setValue('creditorAgentBic', tx.creditorAgentBic);
+    setValue('remittanceUnstructured', tx.remittanceUnstructured);
+    setValue('remittanceReference', tx.remittanceReference);
+    setValue('remittanceStructuredType', tx.remittanceStructuredType);
+    setValue('purposeCode', tx.purposeCode);
+    setValue('transactionId', tx.transactionId);
+    setValue('status', formatStatus(tx.status));
+    setValue('createdAt', tx.createdAt);
+    setValue('authorizedBy', tx.authorizedBy);
+    setValue('approvedBy', tx.approvedBy);
+    setValue('rejectionReason', tx.rejectionReason);
+    
+    document.getElementById('rejection-row').style.display = tx.rejectionReason ? 'flex' : 'none';
+}
+
+async function handleFormSubmit(e) {
+    e.preventDefault();
+    if (currentViewMode === 'create') await createTransaction();
+    else if (currentViewMode === 'edit') await updateTransaction();
+}
+
+async function createTransaction() {
+    const formData = new FormData(detailPanel.form);
+    const data = {};
+    formData.forEach((v, k) => { if (v) data[k] = v; });
+    data.messageType = 'pain.001';
+    data.paymentMethod = data.paymentMethod || 'TRN';
+    data.chargeBearer = data.chargeBearer || 'SLEV';
+    
+    try {
+        const response = await apiCall('/transactions', { method: 'POST', body: JSON.stringify(data) });
+        if (response.ok) {
+            const tx = await response.json();
+            loadTransactions();
+            loadStatusCounts();
+            showViewForm(tx.id);
+        } else {
+            const err = await response.json();
+            alert('Błąd: ' + (err.error || 'Nie udało się utworzyć'));
+        }
+    } catch (error) {
+        alert('Błąd: ' + error.message);
+    }
+}
+
+async function updateTransaction() {
+    const formData = new FormData(detailPanel.form);
+    const data = {};
+    formData.forEach((v, k) => { if (v) data[k] = v; });
+    
+    try {
+        const response = await apiCall(`/transactions/${currentTransactionId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ amount: data.amount, valueDate: data.valueDate, paymentTitle: data.remittanceUnstructured })
+        });
+        if (response.ok) {
+            loadTransactions();
+            loadStatusCounts();
+            showViewForm(currentTransactionId);
+        } else {
+            const err = await response.json();
+            alert('Błąd: ' + (err.error || 'Nie udało się zapisać'));
+        }
+    } catch (error) {
+        alert('Błąd: ' + error.message);
+    }
+}
+
+// Transaction Actions
+async function approveTransaction(id) {
+    try {
+        const response = await apiCall(`/transactions/${id}/approve`, { method: 'POST' });
+        if (response.ok) {
+            loadTransactions();
+            loadStatusCounts();
+            showViewForm(id);
+        } else {
+            const err = await response.json();
+            alert('Błąd: ' + (err.error || 'Nie udało się zatwierdzić'));
+        }
+    } catch (error) {
+        alert('Błąd: ' + error.message);
+    }
+}
+
+async function rejectTransaction(id) {
+    const reason = prompt('Powód odrzucenia:');
+    if (!reason) return;
+    try {
+        const response = await apiCall(`/transactions/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) });
+        if (response.ok) {
+            loadTransactions();
+            loadStatusCounts();
+            showViewForm(id);
+        } else {
+            const err = await response.json();
+            alert('Błąd: ' + (err.error || 'Nie udało się odrzucić'));
+        }
+    } catch (error) {
+        alert('Błąd: ' + error.message);
+    }
+}
+
+async function suspendTransaction(id) {
+    try {
+        const response = await apiCall(`/transactions/${id}/suspend`, { method: 'POST' });
+        if (response.ok) {
+            loadTransactions();
+            loadStatusCounts();
+            showViewForm(id);
+        } else {
+            const err = await response.json();
+            alert('Błąd: ' + (err.error || 'Nie udało się wstrzymać'));
+        }
+    } catch (error) {
+        alert('Błąd: ' + error.message);
+    }
+}
+
+async function resumeTransaction(id) {
+    try {
+        const response = await apiCall(`/transactions/${id}/resume`, { method: 'POST' });
+        if (response.ok) {
+            loadTransactions();
+            loadStatusCounts();
+            showViewForm(id);
+        } else {
+            const err = await response.json();
+            alert('Błąd: ' + (err.error || 'Nie udało się wznowić'));
+        }
+    } catch (error) {
+        alert('Błąd: ' + error.message);
+    }
+}
+
+// Transactions List
+async function loadTransactions() {
+    const listEl = document.getElementById('transactions-list');
+    listEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+    
+    try {
+        let url = `/transactions?page=${currentPage}&size=20`;
+        if (currentFilter) url = `/transactions/status/${currentFilter}`;
+        
+        const response = await apiCall(url);
+        const transactions = await response.json();
+        
+        if (!transactions?.length) {
+            listEl.innerHTML = '<div class="empty-state"><p>Brak transakcji</p></div>';
+            return;
+        }
+        
+        listEl.innerHTML = transactions.map(tx => `
+            <div class="transaction-item ${currentTransactionId === tx.id ? 'active' : ''}" data-id="${tx.id}">
+                <div class="tx-id">#${tx.id}</div>
+                <div class="tx-parties">
+                    <div class="party-row">
+                        <span class="party-name">${escapeHtml(tx.debtorName || tx.senderName || '-')}</span>
+                        <span class="party-iban">${formatIban(tx.debtorAccountIban || tx.senderAccount)}</span>
+                    </div>
+                    <div class="party-row">
+                        <span class="party-name">→ ${escapeHtml(tx.creditorName || tx.receiverName || '-')}</span>
+                        <span class="party-iban">${formatIban(tx.creditorAccountIban || tx.receiverAccount)}</span>
+                    </div>
+                </div>
+                <div class="tx-amount">${formatAmount(tx.amount)} ${tx.currency}</div>
+                <div class="tx-status status-${tx.status}">${formatStatusShort(tx.status)}</div>
+            </div>
+        `).join('');
+        
+        // Add click handlers
+        listEl.querySelectorAll('.transaction-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const id = parseInt(item.dataset.id);
+                showViewForm(id);
+            });
+        });
+        
+        document.getElementById('page-info').textContent = `Strona ${currentPage + 1}`;
+    } catch (error) {
+        listEl.innerHTML = `<div class="empty-state"><p style="color:var(--accent-danger)">${error.message}</p></div>`;
+    }
 }
 
 // Status Flow
@@ -86,317 +466,75 @@ async function loadStatusCounts() {
     try {
         const response = await apiCall('/transactions/status-counts');
         const counts = await response.json();
-        renderStatusSteps(counts);
+        renderStatusFlow(counts);
     } catch (e) { console.error(e); }
 }
 
-function renderStatusSteps(counts) {
-    const steps = [
-        { key: 'RECEIVED', label: 'Odebrane', color: '#60A5FA' },
-        { key: 'VALIDATED', label: 'Zwalidowane', color: '#F59E0B' },
-        { key: 'AUTHORIZED', label: 'Autoryzowane', color: '#F59E0B' },
-        { key: 'PENDING_APPROVAL', label: 'Oczekuje', color: '#F59E0B' },
-        { key: 'APPROVED', label: 'Zatwierdzone', color: '#4CAF50' },
-        { key: 'SENT_TO_CLEARING', label: 'Wysłane', color: '#7A52F4' }
+function renderStatusFlow(counts) {
+    const container = document.getElementById('status-flow-diagram');
+    const main = [
+        {key:'RECEIVED', label:'Odebrane'},
+        {key:'VALIDATED', label:'Zwalidowane'},
+        {key:'AUTHORIZING', label:'Autoryzacja'},
+        {key:'AUTHORIZED', label:'Autoryzowane'},
+        {key:'PENDING_APPROVAL', label:'Oczekuje'},
+        {key:'APPROVED', label:'Zatwierdzone'},
+        {key:'SENT_TO_CLEARING', label:'Wysłane'},
+        {key:'COMPLETED', label:'Zakończone'}
+    ];
+    const sec = [
+        {key:'VALIDATION_FAILED', label:'Błąd wal.'},
+        {key:'AUTHORIZATION_FAILED', label:'Błąd aut.'},
+        {key:'REJECTED', label:'Odrzucone'},
+        {key:'SUSPENDED', label:'Wstrzymane'},
+        {key:'FAILED', label:'Failed'}
     ];
     
-    const total = Object.values(counts).reduce((a, b) => a + b, 0);
-    document.getElementById('total-count').textContent = total;
-    
-    let html = '';
-    steps.forEach((step, i) => {
-        const c = counts[step.key] || 0;
-        const isActive = currentFilter === step.key;
-        html += `
-            <div class="status-step ${isActive ? 'active' : ''}" data-status="${step.key}">
-                <div class="status-step-content" onclick="filterByStatus('${step.key}')">
-                    <span class="status-step-dot"></span>
-                    <span class="status-step-label">${step.label}</span>
-                    <span class="status-step-count">${c}</span>
-                </div>
-            </div>
-            ${i < steps.length - 1 ? '<span class="status-step-arrow">›</span>' : ''}
-        `;
+    // Main flow with arrows - all in one row container
+    let mainHtml = '';
+    main.forEach((s, i) => {
+        if (i > 0) mainHtml += '<span class="flow-arrow">➜</span>';
+        mainHtml += `<span class="status-box ${currentFilter===s.key?'active':''}" data-status="${s.key}" onclick="filterByStatus('${s.key}')"><span class="status-name">${s.label}</span> <span class="status-count">(${counts[s.key]||0})</span></span>`;
     });
     
-    document.getElementById('status-steps').innerHTML = html;
+    // Error/warning statuses - separate row
+    let secHtml = '';
+    sec.forEach(s => {
+        secHtml += `<span class="status-box ${currentFilter===s.key?'active':''}" data-status="${s.key}" onclick="filterByStatus('${s.key}')"><span class="status-name">${s.label}</span> <span class="status-count">(${counts[s.key]||0})</span></span>`;
+    });
+    
+    container.innerHTML = `<div class="status-row-main">${mainHtml}</div><div class="status-row-errors">${secHtml}</div>`;
 }
 
 function filterByStatus(status) {
     currentFilter = currentFilter === status ? '' : status;
+    document.getElementById('status-filter').value = currentFilter;
     currentPage = 0;
     loadTransactions();
     loadStatusCounts();
 }
 
-// Transactions List
-async function loadTransactions() {
-    const listEl = document.getElementById('tx-list');
-    listEl.innerHTML = '<div style="padding:40px;text-align:center;color:#9E9BAE;">Ładowanie...</div>';
-    
-    try {
-        let url = `/transactions?page=${currentPage}&size=50`;
-        if (currentFilter) url = `/transactions/status/${currentFilter}`;
-        
-        const response = await apiCall(url);
-        const txs = await response.json();
-        
-        if (!txs?.length) {
-            listEl.innerHTML = '<div style="padding:40px;text-align:center;color:#9E9BAE;">Brak transakcji</div>';
-            return;
-        }
-        
-        listEl.innerHTML = txs.map(tx => `
-            <div class="tx-item ${currentTxId === tx.id ? 'active' : ''}" data-id="${tx.id}">
-                <div class="tx-item-left">
-                    <span class="tx-item-id">#${tx.id}</span>
-                    <span class="tx-item-sender">${escapeHtml(tx.debtorName || tx.senderName || '-')}</span>
-                    <span class="tx-item-iban">${formatIban(tx.debtorAccountIban || tx.senderAccount)}</span>
-                </div>
-                <div class="tx-item-right">
-                    <span class="tx-item-amount">${formatAmount(tx.amount)} ${tx.currency}</span>
-                    <span class="tx-item-status">${formatStatus(tx.status)}</span>
-                </div>
-            </div>
-        `).join('');
-        
-        listEl.querySelectorAll('.tx-item').forEach(item => {
-            item.addEventListener('click', () => showTransaction(parseInt(item.dataset.id)));
-        });
-    } catch (error) {
-        listEl.innerHTML = `<div style="padding:40px;text-align:center;color:#EF4444;">${error.message}</div>`;
-    }
-}
-
-function handleSearch(e) {
-    // Simple search - filter current list
-    const query = e.target.value.toLowerCase();
-    document.querySelectorAll('.tx-item').forEach(item => {
-        const sender = item.querySelector('.tx-item-sender').textContent.toLowerCase();
-        const iban = item.querySelector('.tx-item-iban').textContent.toLowerCase();
-        item.style.display = (sender.includes(query) || iban.includes(query)) ? 'flex' : 'none';
-    });
-}
-
-// Transaction Detail
-async function showTransaction(id) {
-    try {
-        const response = await apiCall(`/transactions/${id}`);
-        const tx = await response.json();
-        
-        currentTxId = id;
-        loadTransactions(); // refresh to update active state
-        
-        document.getElementById('empty-state').classList.add('hidden');
-        document.getElementById('detail-view').classList.remove('hidden');
-        document.getElementById('detail-id').textContent = tx.id;
-        
-        // Render detail content
-        document.getElementById('detail-content').innerHTML = `
-            <div class="detail-card">
-                <div class="detail-card-title">Identyfikator i metoda</div>
-                <div class="detail-card-grid">
-                    <div class="detail-field">
-                        <span class="detail-field-label">Message ID</span>
-                        <span class="detail-field-value mono">${escapeHtml(tx.messageId || '-')}</span>
-                    </div>
-                    <div class="detail-field">
-                        <span class="detail-field-label">Transaction ID</span>
-                        <span class="detail-field-value mono">${escapeHtml(tx.transactionId || '-')}</span>
-                    </div>
-                    <div class="detail-field">
-                        <span class="detail-field-label">Payment Method</span>
-                        <span class="detail-field-value">${tx.paymentMethod || 'TRN'}</span>
-                    </div>
-                    <div class="detail-field">
-                        <span class="detail-field-label">Charge Bearer</span>
-                        <span class="detail-field-value">${tx.chargeBearer || 'SLEV'}</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="detail-card">
-                <div class="detail-card-title">Dane finansowe</div>
-                <div class="amount-block">
-                    <span class="amount-value">${formatAmount(tx.amount)} ${tx.currency}</span>
-                    <div class="amount-grid">
-                        <div class="detail-field">
-                            <span class="detail-field-label">Waluta</span>
-                            <span class="detail-field-value">${tx.currency}</span>
-                        </div>
-                        <div class="detail-field">
-                            <span class="detail-field-label">Data waluty</span>
-                            <span class="detail-field-value">${tx.valueDate || '-'}</span>
-                        </div>
-                        <div class="detail-field">
-                            <span class="detail-field-label">Data realizacji</span>
-                            <span class="detail-field-value">${tx.requestedExecutionDate || '-'}</span>
-                        </div>
-                        <div class="detail-field">
-                            <span class="detail-field-label">Status</span>
-                            <span class="detail-field-value">${formatStatus(tx.status)}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="detail-card">
-                <div class="detail-card-title">Nadawca</div>
-                <div class="detail-card-grid">
-                    <div class="detail-field">
-                        <span class="detail-field-label">Nazwa</span>
-                        <span class="detail-field-value">${escapeHtml(tx.debtorName || '-')}</span>
-                    </div>
-                    <div class="detail-field">
-                        <span class="detail-field-label">LEI</span>
-                        <span class="detail-field-value mono">${escapeHtml(tx.debtorLegalName || '-')}</span>
-                    </div>
-                    <div class="detail-field">
-                        <span class="detail-field-label">IBAN</span>
-                        <span class="detail-field-value mono">${formatIban(tx.debtorAccountIban)}</span>
-                    </div>
-                    <div class="detail-field">
-                        <span class="detail-field-label">BIC</span>
-                        <span class="detail-field-value mono">${escapeHtml(tx.debtorAgentBic || '-')}</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="detail-card">
-                <div class="detail-card-title">Odbiorca</div>
-                <div class="detail-card-grid">
-                    <div class="detail-field">
-                        <span class="detail-field-label">Nazwa</span>
-                        <span class="detail-field-value">${escapeHtml(tx.creditorName || '-')}</span>
-                    </div>
-                    <div class="detail-field">
-                        <span class="detail-field-label">LEI</span>
-                        <span class="detail-field-value mono">${escapeHtml(tx.creditorLegalName || '-')}</span>
-                    </div>
-                    <div class="detail-field">
-                        <span class="detail-field-label">IBAN</span>
-                        <span class="detail-field-value mono">${formatIban(tx.creditorAccountIban)}</span>
-                    </div>
-                    <div class="detail-field">
-                        <span class="detail-field-label">BIC</span>
-                        <span class="detail-field-value mono">${escapeHtml(tx.creditorAgentBic || '-')}</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="detail-card">
-                <div class="detail-card-title">Tytuł płatności</div>
-                <div class="detail-field">
-                    <span class="detail-field-value">${escapeHtml(tx.remittanceUnstructured || tx.paymentTitle || '-')}</span>
-                </div>
-            </div>
-        `;
-        
-        // Render action buttons
-        let actions = '';
-        if (tx.status === 'PENDING_APPROVAL') {
-            actions = `
-                <button class="action-btn action-btn-outline" onclick="approveTx(${id})">✓ Zweryfikuj</button>
-                <button class="action-btn action-btn-danger" onclick="rejectTx(${id})">✕ Odrzuć</button>
-                <button class="action-btn action-btn-outline" onclick="suspendTx(${id})">⏸ Wstrzymaj</button>
-                <button class="action-btn action-btn-primary" onclick="approveTx(${id})">✓ Zatwierdź</button>
-            `;
-        } else if (tx.status === 'SUSPENDED') {
-            actions = `<button class="action-btn action-btn-primary" onclick="resumeTx(${id})">▶️ Wznów</button>`;
-        } else if (tx.status === 'AUTHORIZED' || tx.status === 'APPROVED') {
-            actions = `<button class="action-btn action-btn-outline" onclick="suspendTx(${id})">⏸ Wstrzymaj</button>`;
-        }
-        
-        document.getElementById('action-bar').innerHTML = actions;
-        
-    } catch (error) {
-        alert('Błąd: ' + error.message);
-    }
-}
-
-function closeDetail() {
-    currentTxId = null;
-    document.getElementById('empty-state').classList.remove('hidden');
-    document.getElementById('detail-view').classList.add('hidden');
-    loadTransactions();
-}
-
-function showNewTransaction() {
-    alert('Tworzenie nowej transakcji - TODO');
-}
-
-// Actions
-async function approveTx(id) {
-    try {
-        await apiCall(`/transactions/${id}/approve`, { method: 'POST' });
-        loadTransactions();
-        loadStatusCounts();
-        showTransaction(id);
-    } catch (e) { alert('Błąd: ' + e.message); }
-}
-
-async function rejectTx(id) {
-    const reason = prompt('Powód odrzucenia:');
-    if (!reason) return;
-    try {
-        await apiCall(`/transactions/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) });
-        loadTransactions();
-        loadStatusCounts();
-        showTransaction(id);
-    } catch (e) { alert('Błąd: ' + e.message); }
-}
-
-async function suspendTx(id) {
-    try {
-        await apiCall(`/transactions/${id}/suspend`, { method: 'POST' });
-        loadTransactions();
-        loadStatusCounts();
-        showTransaction(id);
-    } catch (e) { alert('Błąd: ' + e.message); }
-}
-
-async function resumeTx(id) {
-    try {
-        await apiCall(`/transactions/${id}/resume`, { method: 'POST' });
-        loadTransactions();
-        loadStatusCounts();
-        showTransaction(id);
-    } catch (e) { alert('Błąd: ' + e.message); }
-}
-
 // Helpers
 function formatStatus(s) {
-    const m = {
-        RECEIVED: 'Odebrane', VALIDATED: 'Zwalidowane',
-        AUTHORIZING: 'Autoryzacja', AUTHORIZED: 'Autoryzowane',
-        PENDING_APPROVAL: 'Oczekuje', APPROVED: 'Zatwierdzone',
-        REJECTED: 'Odrzucone', SUSPENDED: 'Wstrzymane',
-        SENT_TO_CLEARING: 'Wysłane', COMPLETED: 'Zakończone',
-        FAILED: 'Failed', VALIDATION_FAILED: 'Błąd',
-        AUTHORIZATION_FAILED: 'Błąd'
-    };
+    const m = {RECEIVED:'Odebrane',VALIDATED:'Zwalidowane',AUTHORIZING:'Autoryzacja',AUTHORIZED:'Autoryzowane',PENDING_APPROVAL:'Oczekuje',APPROVED:'Zatwierdzone',REJECTED:'Odrzucone',SUSPENDED:'Wstrzymane',SENT_TO_CLEARING:'Wysłane',COMPLETED:'Zakończone',FAILED:'Failed',VALIDATION_FAILED:'Błąd wal.',AUTHORIZATION_FAILED:'Błąd aut.'};
     return m[s] || s;
 }
 
-function formatAmount(a) {
-    return new Intl.NumberFormat('pl-PL', { minimumFractionDigits: 2 }).format(a);
+function formatStatusShort(s) {
+    const m = {RECEIVED:'Odebrane',VALIDATED:'OK',AUTHORIZING:'Autor.',AUTHORIZED:'OK',PENDING_APPROVAL:'Oczekuje',APPROVED:'OK',REJECTED:'Odrzucone',SUSPENDED:'Wstrzymane',SENT_TO_CLEARING:'Wysłane',COMPLETED:'OK',FAILED:'Fail',VALIDATION_FAILED:'Err',AUTHORIZATION_FAILED:'Err'};
+    return m[s] || s;
 }
 
-function formatIban(iban) {
-    if (!iban) return '-';
-    return iban.replace(/\s/g, '').match(/.{1,4}/g)?.join(' ') || iban;
-}
+function formatAmount(a) { return new Intl.NumberFormat('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2}).format(a); }
+function formatIban(iban) { if(!iban)return'-'; return iban.replace(/\s/g,'').match(/.{1,4}/g)?.join(' ')||iban; }
+function escapeHtml(t) { if(!t)return''; const d=document.createElement('div'); d.textContent=t; return d.innerHTML; }
 
-function escapeHtml(t) {
-    if (!t) return '';
-    const d = document.createElement('div');
-    d.textContent = t;
-    return d.innerHTML;
-}
-
-// Global functions
+// Global
+window.showViewForm = showViewForm;
+window.showEditForm = showEditForm;
+window.showCreateForm = showCreateForm;
+window.approveTransaction = approveTransaction;
+window.rejectTransaction = rejectTransaction;
+window.suspendTransaction = suspendTransaction;
+window.resumeTransaction = resumeTransaction;
 window.filterByStatus = filterByStatus;
-window.approveTx = approveTx;
-window.rejectTx = rejectTx;
-window.suspendTx = suspendTx;
-window.resumeTx = resumeTx;
