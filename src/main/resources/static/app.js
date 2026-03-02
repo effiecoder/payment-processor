@@ -160,8 +160,15 @@ function closeDetail() {
 
 function openDetail() {
     console.log('openDetail called', detailPanel.panel, transactionsPanel);
+    console.log('panel classList:', detailPanel.panel.classList);
+    console.log('panel style:', detailPanel.panel.style.cssText);
+    console.log('content classList:', detailPanel.content.classList);
     detailPanel.panel.classList.add('open');
     transactionsPanel.classList.add('has-detail');
+    console.log('after add - panel classList:', detailPanel.panel.classList);
+    console.log('after add - content classList:', detailPanel.content.classList);
+    console.log('empty hidden:', detailPanel.empty.classList.contains('hidden'));
+    console.log('content hidden:', detailPanel.content.classList.contains('hidden'));
 }
 
 // Form Modes
