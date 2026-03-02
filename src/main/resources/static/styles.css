@@ -339,22 +339,39 @@ body::before {
 
 .status-box {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
+    gap: 4px;
+    padding: 10px 14px;
     border-radius: var(--radius-sm);
     cursor: pointer;
     transition: all var(--transition-fast);
     border: 1px solid var(--border-subtle);
     background: var(--bg-card);
+    min-width: 70px;
 }
 
 .status-box:hover {
     background: var(--bg-glass-hover);
+    transform: translateY(-2px);
 }
 
 .status-box.active {
     background: rgba(99, 102, 241, 0.15);
+    border-color: var(--accent-primary);
+}
+
+.status-box .status-name {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.status-box .status-count {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
 }
 
 /* Neutral - blue */
@@ -941,13 +958,29 @@ body::before {
     font-size: 12px;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
 .transactions-list .party-row {
-    display: block;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.transactions-list .party-name {
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.transactions-list .party-iban {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    background: var(--bg-glass);
+    padding: 2px 6px;
+    border-radius: 4px;
+    flex-shrink: 0;
 }
 
 .transactions-list .tx-amount {

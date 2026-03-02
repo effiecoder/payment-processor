@@ -430,16 +430,30 @@ async function loadTransactions() {
         }
         
         listEl.innerHTML = transactions.map(tx => `
-            <div class="transaction-item ${currentTransactionId === tx.id ? 'active' : ''}" onclick="showViewForm(${tx.id})">
+            <div class="transaction-item ${currentTransactionId === tx.id ? 'active' : ''}" data-id="${tx.id}">
                 <div class="tx-id">#${tx.id}</div>
                 <div class="tx-parties">
-                    <div class="party-row">${escapeHtml(tx.debtorName || tx.senderName || '-')}</div>
-                    <div class="party-row">→ ${escapeHtml(tx.creditorName || tx.receiverName || '-')}</div>
+                    <div class="party-row">
+                        <span class="party-name">${escapeHtml(tx.debtorName || tx.senderName || '-')}</span>
+                        <span class="party-iban">${formatIban(tx.debtorAccountIban || tx.senderAccount)}</span>
+                    </div>
+                    <div class="party-row">
+                        <span class="party-name">→ ${escapeHtml(tx.creditorName || tx.receiverName || '-')}</span>
+                        <span class="party-iban">${formatIban(tx.creditorAccountIban || tx.receiverAccount)}</span>
+                    </div>
                 </div>
                 <div class="tx-amount">${formatAmount(tx.amount)} ${tx.currency}</div>
                 <div class="tx-status status-${tx.status}">${formatStatusShort(tx.status)}</div>
             </div>
         `).join('');
+        
+        // Add click handlers
+        listEl.querySelectorAll('.transaction-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const id = parseInt(item.dataset.id);
+                showViewForm(id);
+            });
+        });
         
         document.getElementById('page-info').textContent = `Strona ${currentPage + 1}`;
     } catch (error) {
@@ -458,13 +472,32 @@ async function loadStatusCounts() {
 
 function renderStatusFlow(counts) {
     const container = document.getElementById('status-flow-diagram');
-    const main = ['RECEIVED','VALIDATED','AUTHORIZING','AUTHORIZED','PENDING_APPROVAL','APPROVED','SENT_TO_CLEARING','COMPLETED'];
-    const sec = ['VALIDATION_FAILED','AUTHORIZATION_FAILED','REJECTED','SUSPENDED','FAILED'];
+    const main = [
+        {key:'RECEIVED', label:'Odebrane'},
+        {key:'VALIDATED', label:'Zwalidowane'},
+        {key:'AUTHORIZING', label:'Autoryzacja'},
+        {key:'AUTHORIZED', label:'Autoryzowane'},
+        {key:'PENDING_APPROVAL', label:'Oczekuje'},
+        {key:'APPROVED', label:'Zatwierdzone'},
+        {key:'SENT_TO_CLEARING', label:'Wysłane'},
+        {key:'COMPLETED', label:'Zakończone'}
+    ];
+    const sec = [
+        {key:'VALIDATION_FAILED', label:'Błąd wal.'},
+        {key:'AUTHORIZATION_FAILED', label:'Błąd aut.'},
+        {key:'REJECTED', label:'Odrzucone'},
+        {key:'SUSPENDED', label:'Wstrzymane'},
+        {key:'FAILED', label:'Failed'}
+    ];
     
     let html = '';
-    main.forEach(k => html += `<div class="status-box ${currentFilter===k?'active':''}" data-status="${k}" onclick="filterByStatus('${k}')"><span class="status-count">${counts[k]||0}</span></div>`);
-    html += '<span style="color:var(--text-muted)">|</span>';
-    sec.forEach(k => html += `<div class="status-box ${currentFilter===k?'active':''}" data-status="${k}" onclick="filterByStatus('${k}')"><span class="status-count">${counts[k]||0}</span></div>`);
+    main.forEach(s => {
+        html += `<div class="status-box ${currentFilter===s.key?'active':''}" data-status="${s.key}" onclick="filterByStatus('${s.key}')"><span class="status-name">${s.label}</span><span class="status-count">${counts[s.key]||0}</span></div>`;
+    });
+    html += '<div style="width:100%;height:8px;"></div>';
+    sec.forEach(s => {
+        html += `<div class="status-box ${currentFilter===s.key?'active':''}" data-status="${s.key}" onclick="filterByStatus('${s.key}')"><span class="status-name">${s.label}</span><span class="status-count">${counts[s.key]||0}</span></div>`;
+    });
     container.innerHTML = html;
 }
 
@@ -488,6 +521,7 @@ function formatStatusShort(s) {
 }
 
 function formatAmount(a) { return new Intl.NumberFormat('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2}).format(a); }
+function formatIban(iban) { if(!iban)return'-'; return iban.replace(/\s/g,'').match(/.{1,4}/g)?.join(' ')||iban; }
 function escapeHtml(t) { if(!t)return''; const d=document.createElement('div'); d.textContent=t; return d.innerHTML; }
 
 // Global
