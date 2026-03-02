@@ -28,17 +28,22 @@ const transactionsPanel = document.getElementById('transactions-panel');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM loaded, initializing...');
     if (token) {
+        console.log('Token found, showing main screen');
         showMainScreen();
         loadTransactions();
         loadStatusCounts();
     } else {
+        console.log('No token, showing login');
         showLoginScreen();
     }
     setupEventListeners();
+    console.log('Event listeners set up');
 });
 
 function setupEventListeners() {
+    console.log('Setting up event listeners...');
     // Login
     document.getElementById('login-form').addEventListener('submit', handleLogin);
     document.getElementById('logout-btn').addEventListener('click', handleLogout);
@@ -68,13 +73,20 @@ function setupEventListeners() {
     });
     
     // New Transaction
-    document.getElementById('new-transaction-btn').addEventListener('click', showCreateForm);
+    const newBtn = document.getElementById('new-transaction-btn');
+    console.log('New transaction button:', newBtn);
+    newBtn.addEventListener('click', () => {
+        console.log('New transaction button clicked');
+        showCreateForm();
+    });
     
     // Close detail
     detailPanel.closeBtn.addEventListener('click', closeDetail);
     
     // Form submit
     detailPanel.form.addEventListener('submit', handleFormSubmit);
+    
+    console.log('Event listeners set up complete');
 }
 
 // Auth
@@ -153,6 +165,7 @@ function openDetail() {
 
 // Form Modes
 function showCreateForm() {
+    console.log('showCreateForm called');
     currentViewMode = 'create';
     currentTransactionId = null;
     
