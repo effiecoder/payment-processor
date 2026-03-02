@@ -149,11 +149,11 @@ Projekt podzielony na zadania zgodnie z metodologią incrementalną. Każde zada
 ## Sprint 7: Testy i Dokumentacja
 
 ### Zadanie 7.1: Testy jednostkowe
-- [ ] Pokrycie > 70% kodu testami
-- [ ] Testy serwisów
-- [ ] Testy walidatorów
-- [ ] Testy authorizerów
-- [ ] **COMMIT**: "Add: Unit tests"
+- [x] Pokrycie > 70% kodu testami
+- [x] Testy serwisów
+- [x] Testy walidatorów
+- [x] Testy authorizerów
+- [x] **COMMIT**: "Add: Unit tests"
 
 ### Zadanie 7.2: Testy integracyjne
 - [ ] Testy REST API
