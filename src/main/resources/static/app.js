@@ -1,10 +1,10 @@
-// Payment Processor - Modern Frontend JavaScript
+// Payment Processor - Frontend JavaScript
 
 const API_BASE = '/api';
 let token = localStorage.getItem('token');
 let currentPage = 0;
 let currentFilter = '';
-let currentViewMode = 'view'; // 'view', 'edit', 'create'
+let currentViewMode = 'view';
 let currentTransactionId = null;
 
 // DOM Elements
@@ -14,13 +14,17 @@ const screens = {
 };
 
 const detailPanel = {
+    panel: document.getElementById('detail-panel'),
     empty: document.getElementById('detail-empty'),
     content: document.getElementById('detail-content'),
     title: document.getElementById('detail-title'),
-    actions: document.getElementById('detail-actions'),
+    closeBtn: document.getElementById('close-detail'),
     form: document.getElementById('transaction-form'),
-    formActions: document.getElementById('form-actions')
+    formActions: document.getElementById('form-actions'),
+    statusSection: document.getElementById('status-section')
 };
+
+const transactionsPanel = document.getElementById('transactions-panel');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -31,12 +35,11 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         showLoginScreen();
     }
-
     setupEventListeners();
 });
 
 function setupEventListeners() {
-    // Login form
+    // Login
     document.getElementById('login-form').addEventListener('submit', handleLogin);
     document.getElementById('logout-btn').addEventListener('click', handleLogout);
     document.getElementById('refresh-btn').addEventListener('click', () => {
@@ -67,6 +70,9 @@ function setupEventListeners() {
     // New Transaction
     document.getElementById('new-transaction-btn').addEventListener('click', showCreateForm);
     
+    // Close detail
+    detailPanel.closeBtn.addEventListener('click', closeDetail);
+    
     // Form submit
     detailPanel.form.addEventListener('submit', handleFormSubmit);
 }
@@ -74,7 +80,6 @@ function setupEventListeners() {
 // Auth
 async function handleLogin(e) {
     e.preventDefault();
-    
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
     const errorEl = document.getElementById('login-error');
@@ -88,9 +93,7 @@ async function handleLogin(e) {
             body: JSON.stringify({ username, password })
         });
         
-        if (!response.ok) {
-            throw new Error('Nieprawidłowa nazwa użytkownika lub hasło');
-        }
+        if (!response.ok) throw new Error('Nieprawidłowa nazwa użytkownika lub hasło');
         
         const data = await response.json();
         token = data.token;
@@ -113,25 +116,15 @@ function handleLogout() {
 
 // API Helper
 async function apiCall(endpoint, options = {}) {
-    const headers = {
-        'Content-Type': 'application/json',
-        ...options.headers
-    };
+    const headers = { 'Content-Type': 'application/json', ...options.headers };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
     
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-    }
-    
-    const response = await fetch(`${API_BASE}${endpoint}`, {
-        ...options,
-        headers
-    });
+    const response = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
     
     if (response.status === 401) {
         handleLogout();
         throw new Error('Sesja wygasła');
     }
-    
     return response;
 }
 
@@ -147,18 +140,15 @@ function showMainScreen() {
 }
 
 // Detail Panel
-function showDetailEmpty() {
-    detailPanel.empty.classList.remove('hidden');
-    detailPanel.content.classList.add('hidden');
-    document.getElementById('detail-panel').classList.remove('open');
-    document.getElementById('master-panel').classList.remove('has-detail');
+function closeDetail() {
+    detailPanel.panel.classList.remove('open');
+    transactionsPanel.classList.remove('has-detail');
+    currentTransactionId = null;
 }
 
-function showDetailContent() {
-    document.getElementById('detail-panel').classList.add('open');
-    document.getElementById('master-panel').classList.add('has-detail');
-    detailPanel.empty.classList.add('hidden');
-    detailPanel.content.classList.remove('hidden');
+function openDetail() {
+    detailPanel.panel.classList.add('open');
+    transactionsPanel.classList.add('has-detail');
 }
 
 // Form Modes
@@ -166,32 +156,24 @@ function showCreateForm() {
     currentViewMode = 'create';
     currentTransactionId = null;
     
-    // Clear form
     detailPanel.form.reset();
     detailPanel.form.querySelectorAll('input, select, textarea').forEach(el => {
         el.removeAttribute('readonly');
         el.removeAttribute('disabled');
     });
     
-    // Set default date
+    // Default date
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     detailPanel.form.valueDate.value = tomorrow.toISOString().split('T')[0];
     
-    // Set title and actions
     detailPanel.title.textContent = '➕ Nowa transakcja ISO20022';
-    detailPanel.actions.innerHTML = `
-        <button type="button" class="btn" onclick="showDetailEmpty()">Anuluj</button>
-    `;
-    detailPanel.formActions.innerHTML = `
-        <button type="submit" class="btn btn-primary">Utwórz transakcję</button>
-    `;
+    detailPanel.statusSection.style.display = 'none';
+    detailPanel.formActions.innerHTML = `<button type="submit" class="btn btn-primary">Utwórz</button>`;
     
-    // Hide status section
-    const statusSection = detailPanel.form.querySelector('input[name="status"]')?.closest('fieldset');
-    if (statusSection) statusSection.style.display = 'none';
-    
-    showDetailContent();
+    detailPanel.empty.classList.add('hidden');
+    detailPanel.content.classList.remove('hidden');
+    openDetail();
 }
 
 async function showViewForm(id) {
@@ -202,42 +184,35 @@ async function showViewForm(id) {
         currentViewMode = 'view';
         currentTransactionId = id;
         
-        // Fill form with data
         fillFormWithTransaction(tx);
         
-        // Make fields readonly
         detailPanel.form.querySelectorAll('input, select, textarea').forEach(el => {
             el.setAttribute('readonly', true);
             el.setAttribute('disabled', true);
         });
         
-        // Set title and actions
         detailPanel.title.textContent = `📋 Transakcja #${id}`;
         
-        let actionsHtml = `<button type="button" class="btn" onclick="showDetailEmpty()">Zamknij</button>`;
-        
-        // Add action buttons based on status
+        let actionsHtml = '';
         if (tx.status === 'PENDING_APPROVAL') {
-            actionsHtml += `
+            actionsHtml = `
                 <button type="button" class="btn btn-success" onclick="approveTransaction(${id})">✓ Zatwierdź</button>
                 <button type="button" class="btn btn-danger" onclick="rejectTransaction(${id})">✕ Odrzuć</button>
                 <button type="button" class="btn" onclick="showEditForm(${id})">✏️ Edytuj</button>
                 <button type="button" class="btn" onclick="suspendTransaction(${id})">⏸ Wstrzymaj</button>
             `;
         } else if (tx.status === 'SUSPENDED') {
-            actionsHtml += `<button type="button" class="btn btn-primary" onclick="resumeTransaction(${id})">▶️ Wznów</button>`;
+            actionsHtml = `<button type="button" class="btn btn-primary" onclick="resumeTransaction(${id})">▶️ Wznów</button>`;
         } else if (tx.status === 'AUTHORIZED' || tx.status === 'APPROVED') {
-            actionsHtml += `<button type="button" class="btn" onclick="suspendTransaction(${id})">⏸ Wstrzymaj</button>`;
+            actionsHtml = `<button type="button" class="btn" onclick="suspendTransaction(${id})">⏸ Wstrzymaj</button>`;
         }
         
-        detailPanel.actions.innerHTML = actionsHtml;
-        detailPanel.formActions.innerHTML = '';
+        detailPanel.formActions.innerHTML = actionsHtml;
+        detailPanel.statusSection.style.display = 'block';
         
-        // Show status section
-        const statusSection = detailPanel.form.querySelector('input[name="status"]')?.closest('fieldset');
-        if (statusSection) statusSection.style.display = 'block';
-        
-        showDetailContent();
+        detailPanel.empty.classList.add('hidden');
+        detailPanel.content.classList.remove('hidden');
+        openDetail();
     } catch (error) {
         alert('Błąd: ' + error.message);
     }
@@ -251,13 +226,10 @@ async function showEditForm(id) {
         currentViewMode = 'edit';
         currentTransactionId = id;
         
-        // Fill form with data
         fillFormWithTransaction(tx);
         
-        // Make editable fields writable
         detailPanel.form.querySelectorAll('input, select, textarea').forEach(el => {
             const name = el.name;
-            // Keep some fields readonly
             if (['messageId', 'paymentInstructionId', 'creationDateTime', 'status', 'createdAt', 'authorizedBy', 'approvedBy', 'rejectionReason'].includes(name)) {
                 el.setAttribute('readonly', true);
                 el.setAttribute('disabled', true);
@@ -267,20 +239,13 @@ async function showEditForm(id) {
             }
         });
         
-        // Set title and actions
-        detailPanel.title.textContent = `✏️ Edycja transakcji #${id}`;
-        detailPanel.actions.innerHTML = `
-            <button type="button" class="btn" onclick="showViewForm(${id})">Anuluj</button>
-        `;
-        detailPanel.formActions.innerHTML = `
-            <button type="submit" class="btn btn-primary">Zapisz zmiany</button>
-        `;
+        detailPanel.title.textContent = `✏️ Edycja #${id}`;
+        detailPanel.formActions.innerHTML = `<button type="submit" class="btn btn-primary">Zapisz</button>`;
+        detailPanel.statusSection.style.display = 'block';
         
-        // Show status section
-        const statusSection = detailPanel.form.querySelector('input[name="status"]')?.closest('fieldset');
-        if (statusSection) statusSection.style.display = 'block';
-        
-        showDetailContent();
+        detailPanel.empty.classList.add('hidden');
+        detailPanel.content.classList.remove('hidden');
+        openDetail();
     } catch (error) {
         alert('Błąd: ' + error.message);
     }
@@ -288,112 +253,69 @@ async function showEditForm(id) {
 
 function fillFormWithTransaction(tx) {
     const form = detailPanel.form;
-    
-    // Helper to set value
     const setValue = (name, value) => {
         const el = form.querySelector(`[name="${name}"]`);
         if (el) {
-            if (el.type === 'datetime-local' && value) {
-                // Convert timestamp to datetime-local format
-                el.value = new Date(value).toISOString().slice(0, 16);
-            } else if (el.type === 'date' && value) {
-                el.value = value;
-            } else {
-                el.value = value || '';
-            }
+            if (el.type === 'datetime-local' && value) el.value = new Date(value).toISOString().slice(0, 16);
+            else el.value = value || '';
         }
     };
     
-    // Header
     setValue('messageId', tx.messageId);
     setValue('paymentInstructionId', tx.paymentInstructionId);
     setValue('creationDateTime', tx.creationDateTime);
     setValue('paymentMethod', tx.paymentMethod);
-    
-    // Amount
     setValue('amount', tx.amount);
     setValue('currency', tx.currency);
     setValue('valueDate', tx.valueDate);
     setValue('requestedExecutionDate', tx.requestedExecutionDate);
     setValue('chargeBearer', tx.chargeBearer);
-    
-    // Debtor
     setValue('debtorName', tx.debtorName);
     setValue('debtorLegalName', tx.debtorLegalName);
     setValue('debtorAccountIban', tx.debtorAccountIban);
     setValue('debtorAgentBic', tx.debtorAgentBic);
-    setValue('debtorAddressLine', tx.debtorAddressLine);
-    setValue('debtorCountry', tx.debtorCountry);
-    
-    // Creditor
     setValue('creditorName', tx.creditorName);
     setValue('creditorLegalName', tx.creditorLegalName);
     setValue('creditorAccountIban', tx.creditorAccountIban);
     setValue('creditorAgentBic', tx.creditorAgentBic);
-    setValue('creditorAddressLine', tx.creditorAddressLine);
-    setValue('creditorCountry', tx.creditorCountry);
-    
-    // Remittance
     setValue('remittanceUnstructured', tx.remittanceUnstructured);
     setValue('remittanceReference', tx.remittanceReference);
     setValue('remittanceStructuredType', tx.remittanceStructuredType);
     setValue('purposeCode', tx.purposeCode);
     setValue('transactionId', tx.transactionId);
-    
-    // Status
     setValue('status', formatStatus(tx.status));
     setValue('createdAt', tx.createdAt);
     setValue('authorizedBy', tx.authorizedBy);
     setValue('approvedBy', tx.approvedBy);
     setValue('rejectionReason', tx.rejectionReason);
     
-    // Show rejection reason if exists
-    const rejectionRow = document.getElementById('rejection-row');
-    if (tx.rejectionReason) {
-        rejectionRow.style.display = 'flex';
-    } else {
-        rejectionRow.style.display = 'none';
-    }
+    document.getElementById('rejection-row').style.display = tx.rejectionReason ? 'flex' : 'none';
 }
 
 async function handleFormSubmit(e) {
     e.preventDefault();
-    
-    if (currentViewMode === 'create') {
-        await createTransaction();
-    } else if (currentViewMode === 'edit') {
-        await updateTransaction();
-    }
+    if (currentViewMode === 'create') await createTransaction();
+    else if (currentViewMode === 'edit') await updateTransaction();
 }
 
 async function createTransaction() {
-    const form = detailPanel.form;
-    const formData = new FormData(form);
+    const formData = new FormData(detailPanel.form);
     const data = {};
-    
-    formData.forEach((value, key) => {
-        if (value) data[key] = value;
-    });
-    
-    // Set defaults
+    formData.forEach((v, k) => { if (v) data[k] = v; });
     data.messageType = 'pain.001';
     data.paymentMethod = data.paymentMethod || 'TRN';
     data.chargeBearer = data.chargeBearer || 'SLEV';
     
     try {
-        const response = await apiCall('/transactions', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-        
+        const response = await apiCall('/transactions', { method: 'POST', body: JSON.stringify(data) });
         if (response.ok) {
             const tx = await response.json();
             loadTransactions();
             loadStatusCounts();
             showViewForm(tx.id);
         } else {
-            const error = await response.json();
-            alert('Błąd: ' + (error.error || 'Nie udało się utworzyć transakcji'));
+            const err = await response.json();
+            alert('Błąd: ' + (err.error || 'Nie udało się utworzyć'));
         }
     } catch (error) {
         alert('Błąd: ' + error.message);
@@ -401,31 +323,22 @@ async function createTransaction() {
 }
 
 async function updateTransaction() {
-    const form = detailPanel.form;
-    const formData = new FormData(form);
+    const formData = new FormData(detailPanel.form);
     const data = {};
-    
-    formData.forEach((value, key) => {
-        if (value) data[key] = value;
-    });
+    formData.forEach((v, k) => { if (v) data[k] = v; });
     
     try {
         const response = await apiCall(`/transactions/${currentTransactionId}`, {
             method: 'PATCH',
-            body: JSON.stringify({
-                amount: data.amount,
-                valueDate: data.valueDate,
-                paymentTitle: data.remittanceUnstructured
-            })
+            body: JSON.stringify({ amount: data.amount, valueDate: data.valueDate, paymentTitle: data.remittanceUnstructured })
         });
-        
         if (response.ok) {
             loadTransactions();
             loadStatusCounts();
             showViewForm(currentTransactionId);
         } else {
-            const error = await response.json();
-            alert('Błąd: ' + (error.error || 'Nie udało się zapisać'));
+            const err = await response.json();
+            alert('Błąd: ' + (err.error || 'Nie udało się zapisać'));
         }
     } catch (error) {
         alert('Błąd: ' + error.message);
@@ -441,8 +354,8 @@ async function approveTransaction(id) {
             loadStatusCounts();
             showViewForm(id);
         } else {
-            const data = await response.json();
-            alert('Błąd: ' + (data.error || 'Nie udało się zatwierdzić'));
+            const err = await response.json();
+            alert('Błąd: ' + (err.error || 'Nie udało się zatwierdzić'));
         }
     } catch (error) {
         alert('Błąd: ' + error.message);
@@ -450,21 +363,17 @@ async function approveTransaction(id) {
 }
 
 async function rejectTransaction(id) {
-    const reason = prompt('Podaj powód odrzucenia:');
+    const reason = prompt('Powód odrzucenia:');
     if (!reason) return;
-    
     try {
-        const response = await apiCall(`/transactions/${id}/reject`, {
-            method: 'POST',
-            body: JSON.stringify({ reason })
-        });
+        const response = await apiCall(`/transactions/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) });
         if (response.ok) {
             loadTransactions();
             loadStatusCounts();
             showViewForm(id);
         } else {
-            const data = await response.json();
-            alert('Błąd: ' + (data.error || 'Nie udało się odrzucić'));
+            const err = await response.json();
+            alert('Błąd: ' + (err.error || 'Nie udało się odrzucić'));
         }
     } catch (error) {
         alert('Błąd: ' + error.message);
@@ -479,8 +388,8 @@ async function suspendTransaction(id) {
             loadStatusCounts();
             showViewForm(id);
         } else {
-            const data = await response.json();
-            alert('Błąd: ' + (data.error || 'Nie udało się wstrzymać'));
+            const err = await response.json();
+            alert('Błąd: ' + (err.error || 'Nie udało się wstrzymać'));
         }
     } catch (error) {
         alert('Błąd: ' + error.message);
@@ -495,8 +404,8 @@ async function resumeTransaction(id) {
             loadStatusCounts();
             showViewForm(id);
         } else {
-            const data = await response.json();
-            alert('Błąd: ' + (data.error || 'Nie udało się wznowić'));
+            const err = await response.json();
+            alert('Błąd: ' + (err.error || 'Nie udało się wznowić'));
         }
     } catch (error) {
         alert('Błąd: ' + error.message);
@@ -510,14 +419,12 @@ async function loadTransactions() {
     
     try {
         let url = `/transactions?page=${currentPage}&size=20`;
-        if (currentFilter) {
-            url = `/transactions/status/${currentFilter}`;
-        }
+        if (currentFilter) url = `/transactions/status/${currentFilter}`;
         
         const response = await apiCall(url);
         const transactions = await response.json();
         
-        if (!transactions || transactions.length === 0) {
+        if (!transactions?.length) {
             listEl.innerHTML = '<div class="empty-state"><p>Brak transakcji</p></div>';
             return;
         }
@@ -526,21 +433,17 @@ async function loadTransactions() {
             <div class="transaction-item ${currentTransactionId === tx.id ? 'active' : ''}" onclick="showViewForm(${tx.id})">
                 <div class="tx-id">#${tx.id}</div>
                 <div class="tx-parties">
-                    <div class="party-row">
-                        <span>${escapeHtml(tx.debtorName || tx.senderName || '-')}</span>
-                    </div>
-                    <div class="party-row">
-                        <span>→ ${escapeHtml(tx.creditorName || tx.receiverName || '-')}</span>
-                    </div>
+                    <div class="party-row">${escapeHtml(tx.debtorName || tx.senderName || '-')}</div>
+                    <div class="party-row">→ ${escapeHtml(tx.creditorName || tx.receiverName || '-')}</div>
                 </div>
                 <div class="tx-amount">${formatAmount(tx.amount)} ${tx.currency}</div>
+                <div class="tx-status status-${tx.status}">${formatStatusShort(tx.status)}</div>
             </div>
         `).join('');
         
-        // Update pagination
-        document.getElementById('page-info').textContent = currentPage + 1;
+        document.getElementById('page-info').textContent = `Strona ${currentPage + 1}`;
     } catch (error) {
-        listEl.innerHTML = `<div class="loading"><p style="color: var(--accent-danger)">${error.message}</p></div>`;
+        listEl.innerHTML = `<div class="empty-state"><p style="color:var(--accent-danger)">${error.message}</p></div>`;
     }
 }
 
@@ -550,66 +453,23 @@ async function loadStatusCounts() {
         const response = await apiCall('/transactions/status-counts');
         const counts = await response.json();
         renderStatusFlow(counts);
-    } catch (error) {
-        console.error('Error loading status counts:', error);
-    }
+    } catch (e) { console.error(e); }
 }
 
 function renderStatusFlow(counts) {
     const container = document.getElementById('status-flow-diagram');
-    
-    const mainFlow = [
-        { key: 'RECEIVED', label: 'Odebrane' },
-        { key: 'VALIDATED', label: 'Zwalidowane' },
-        { key: 'AUTHORIZING', label: 'Autoryzacja' },
-        { key: 'AUTHORIZED', label: 'Autoryzowane' },
-        { key: 'PENDING_APPROVAL', label: 'Oczekuje' },
-        { key: 'APPROVED', label: 'Zatwierdzone' },
-        { key: 'SENT_TO_CLEARING', label: 'Wysłane' },
-        { key: 'COMPLETED', label: 'Zakończone' }
-    ];
-    
-    const secondaryFlow = [
-        { key: 'VALIDATION_FAILED', label: 'Błąd' },
-        { key: 'AUTHORIZATION_FAILED', label: 'Błąd' },
-        { key: 'REJECTED', label: 'Odrzucone' },
-        { key: 'SUSPENDED', label: 'Wstrzymane' },
-        { key: 'FAILED', label: 'Failed' }
-    ];
+    const main = ['RECEIVED','VALIDATED','AUTHORIZING','AUTHORIZED','PENDING_APPROVAL','APPROVED','SENT_TO_CLEARING','COMPLETED'];
+    const sec = ['VALIDATION_FAILED','AUTHORIZATION_FAILED','REJECTED','SUSPENDED','FAILED'];
     
     let html = '';
-    
-    mainFlow.forEach((status) => {
-        const count = counts[status.key] || 0;
-        const isActive = currentFilter === status.key;
-        html += `
-            <div class="status-box ${isActive ? 'active' : ''}" data-status="${status.key}" onclick="filterByStatus('${status.key}')">
-                <span class="status-count">${count}</span>
-            </div>
-        `;
-    });
-    
-    html += '<span style="color: var(--text-muted); font-size: 10px;">|</span>';
-    
-    secondaryFlow.forEach((status) => {
-        const count = counts[status.key] || 0;
-        const isActive = currentFilter === status.key;
-        html += `
-            <div class="status-box ${isActive ? 'active' : ''}" data-status="${status.key}" onclick="filterByStatus('${status.key}')">
-                <span class="status-count">${count}</span>
-            </div>
-        `;
-    });
-    
+    main.forEach(k => html += `<div class="status-box ${currentFilter===k?'active':''}" data-status="${k}" onclick="filterByStatus('${k}')"><span class="status-count">${counts[k]||0}</span></div>`);
+    html += '<span style="color:var(--text-muted)">|</span>';
+    sec.forEach(k => html += `<div class="status-box ${currentFilter===k?'active':''}" data-status="${k}" onclick="filterByStatus('${k}')"><span class="status-count">${counts[k]||0}</span></div>`);
     container.innerHTML = html;
 }
 
 function filterByStatus(status) {
-    if (currentFilter === status) {
-        currentFilter = '';
-    } else {
-        currentFilter = status;
-    }
+    currentFilter = currentFilter === status ? '' : status;
     document.getElementById('status-filter').value = currentFilter;
     currentPage = 0;
     loadTransactions();
@@ -617,40 +477,20 @@ function filterByStatus(status) {
 }
 
 // Helpers
-function formatStatus(status) {
-    const statusMap = {
-        'RECEIVED': 'Odebrane',
-        'VALIDATED': 'Zwalidowane',
-        'VALIDATION_FAILED': 'Błąd walidacji',
-        'AUTHORIZING': 'Autoryzacja',
-        'AUTHORIZED': 'Autoryzowane',
-        'AUTHORIZATION_FAILED': 'Błąd autoryzacji',
-        'PENDING_APPROVAL': 'Oczekuje',
-        'APPROVED': 'Zatwierdzone',
-        'REJECTED': 'Odrzucone',
-        'SUSPENDED': 'Wstrzymane',
-        'SENT_TO_CLEARING': 'Wysłane',
-        'COMPLETED': 'Zakończone',
-        'FAILED': 'Nie powiodło się'
-    };
-    return statusMap[status] || status;
+function formatStatus(s) {
+    const m = {RECEIVED:'Odebrane',VALIDATED:'Zwalidowane',AUTHORIZING:'Autoryzacja',AUTHORIZED:'Autoryzowane',PENDING_APPROVAL:'Oczekuje',APPROVED:'Zatwierdzone',REJECTED:'Odrzucone',SUSPENDED:'Wstrzymane',SENT_TO_CLEARING:'Wysłane',COMPLETED:'Zakończone',FAILED:'Failed',VALIDATION_FAILED:'Błąd wal.',AUTHORIZATION_FAILED:'Błąd aut.'};
+    return m[s] || s;
 }
 
-function formatAmount(amount) {
-    return new Intl.NumberFormat('pl-PL', { 
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2 
-    }).format(amount);
+function formatStatusShort(s) {
+    const m = {RECEIVED:'Odebrane',VALIDATED:'OK',AUTHORIZING:'Autor.',AUTHORIZED:'OK',PENDING_APPROVAL:'Oczekuje',APPROVED:'OK',REJECTED:'Odrzucone',SUSPENDED:'Wstrzymane',SENT_TO_CLEARING:'Wysłane',COMPLETED:'OK',FAILED:'Fail',VALIDATION_FAILED:'Err',AUTHORIZATION_FAILED:'Err'};
+    return m[s] || s;
 }
 
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+function formatAmount(a) { return new Intl.NumberFormat('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2}).format(a); }
+function escapeHtml(t) { if(!t)return''; const d=document.createElement('div'); d.textContent=t; return d.innerHTML; }
 
-// Make functions global
+// Global
 window.showViewForm = showViewForm;
 window.showEditForm = showEditForm;
 window.showCreateForm = showCreateForm;
