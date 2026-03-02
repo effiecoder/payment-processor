@@ -552,23 +552,23 @@ function renderStatusFlow(counts) {
     
     // Main flow order
     const mainFlow = [
-        { key: 'RECEIVED', label: 'Odebrane', icon: '📥' },
-        { key: 'VALIDATED', label: 'Zwalidowane', icon: '✅' },
-        { key: 'AUTHORIZING', label: 'Autoryzacja', icon: '🔐' },
-        { key: 'AUTHORIZED', label: 'Autoryzowane', icon: '🔓' },
-        { key: 'PENDING_APPROVAL', label: 'Oczekuje', icon: '⏳' },
-        { key: 'APPROVED', label: 'Zatwierdzone', icon: '✓' },
-        { key: 'SENT_TO_CLEARING', label: 'Wysłane', icon: '📤' },
-        { key: 'COMPLETED', label: 'Zakończone', icon: '🎉' }
+        { key: 'RECEIVED', label: 'Odebrane' },
+        { key: 'VALIDATED', label: 'Zwalidowane' },
+        { key: 'AUTHORIZING', label: 'Autoryzacja' },
+        { key: 'AUTHORIZED', label: 'Autoryzowane' },
+        { key: 'PENDING_APPROVAL', label: 'Oczekuje' },
+        { key: 'APPROVED', label: 'Zatwierdzone' },
+        { key: 'SENT_TO_CLEARING', label: 'Wysłane' },
+        { key: 'COMPLETED', label: 'Zakończone' }
     ];
     
     // Secondary statuses
     const secondaryFlow = [
-        { key: 'VALIDATION_FAILED', label: 'Błąd walidacji', icon: '❌' },
-        { key: 'AUTHORIZATION_FAILED', label: 'Błąd autoryzacji', icon: '⚠️' },
-        { key: 'REJECTED', label: 'Odrzucone', icon: '✕' },
-        { key: 'SUSPENDED', label: 'Wstrzymane', icon: '⏸' },
-        { key: 'FAILED', label: 'Nie powiodło się', icon: '💥' }
+        { key: 'VALIDATION_FAILED', label: 'Błąd walidacji' },
+        { key: 'AUTHORIZATION_FAILED', label: 'Błąd autoryzacji' },
+        { key: 'REJECTED', label: 'Odrzucone' },
+        { key: 'SUSPENDED', label: 'Wstrzymane' },
+        { key: 'FAILED', label: 'Failed' }
     ];
     
     let html = '';
@@ -578,32 +578,32 @@ function renderStatusFlow(counts) {
         const count = counts[status.key] || 0;
         const isActive = currentFilter === status.key;
         html += `
-            <div class="status-box status-box-${status.key} ${isActive ? 'active' : ''}" 
-                 onclick="filterByStatus('${status.key}')" title="Kliknij aby filtrować">
-                <span class="status-name">${status.icon} ${status.label}</span>
+            <div class="status-box ${isActive ? 'active' : ''}" 
+                 onclick="filterByStatus('${status.key}')">
+                <span class="status-name">${status.label}</span>
                 <span class="status-count">${count}</span>
             </div>
         `;
         if (index < mainFlow.length - 1) {
-            html += '<span class="status-arrow">→</span>';
+            html += '<span class="status-arrow">›</span>';
         }
     });
     
-    html += '<div style="width:100%; height:16px;"></div>';
+    html += '<div style="width:100%; height:8px;"></div>';
     
     // Secondary flow
     secondaryFlow.forEach((status, index) => {
         const count = counts[status.key] || 0;
         const isActive = currentFilter === status.key;
         html += `
-            <div class="status-box status-box-${status.key} ${isActive ? 'active' : ''}" 
-                 onclick="filterByStatus('${status.key}')" title="Kliknij aby filtrować">
-                <span class="status-name">${status.icon} ${status.label}</span>
+            <div class="status-box ${isActive ? 'active' : ''}" 
+                 onclick="filterByStatus('${status.key}')">
+                <span class="status-name">${status.label}</span>
                 <span class="status-count">${count}</span>
             </div>
         `;
         if (index < secondaryFlow.length - 1) {
-            html += '<span class="status-arrow">→</span>';
+            html += '<span class="status-arrow">›</span>';
         }
     });
     
