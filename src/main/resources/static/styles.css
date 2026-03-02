@@ -310,84 +310,75 @@ body::before {
 .btn-warning { background: var(--gradient-danger); color: white; }
 .btn-danger { background: var(--gradient-danger); color: white; }
 
-/* Status Flow Diagram - Compact & Modern */
+/* Status Flow Diagram - Ultra Compact Pills */
 .status-flow {
-    background: var(--bg-glass);
-    backdrop-filter: var(--blur-glass);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
-    padding: 16px 20px;
-    margin-bottom: 24px;
-    box-shadow: var(--shadow-md);
+    background: transparent;
+    padding: 8px 0;
+    margin-bottom: 16px;
 }
 
 .status-flow-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    margin-bottom: 12px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    display: none;
 }
 
 .status-flow-diagram {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 2px;
     align-items: center;
+    font-size: 11px;
+    line-height: 1.8;
 }
 
 .status-box {
-    display: flex;
-    flex-direction: column;
+    display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 10px 14px;
-    border-radius: var(--radius-sm);
+    gap: 3px;
+    padding: 3px 8px;
+    border-radius: 10px;
     cursor: pointer;
     transition: all var(--transition-fast);
     border: 1px solid var(--border-subtle);
     background: var(--bg-card);
-    min-width: 70px;
+    font-size: 11px;
+    white-space: nowrap;
 }
 
 .status-box:hover {
     background: var(--bg-glass-hover);
-    transform: translateY(-2px);
 }
 
 .status-box.active {
-    background: rgba(99, 102, 241, 0.15);
-    border-color: var(--accent-primary);
+    background: var(--accent-primary) !important;
+    border-color: var(--accent-primary) !important;
+    color: white !important;
 }
 
 .status-box .status-name {
-    font-size: 9px;
-    font-weight: 600;
-    text-transform: uppercase;
-    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 500;
+    color: inherit;
 }
 
 .status-box .status-count {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--text-primary);
+    font-size: 10px;
+    font-weight: 600;
 }
 
-/* Neutral - blue */
-.status-box[data-status="RECEIVED"],
-.status-box[data-status="AUTHORIZING"],
-.status-box[data-status="SENT_TO_CLEARING"] {
-    border-left: 3px solid #3b82f6;
-}
-
-/* Positive - green */
-.status-box[data-status="VALIDATED"],
-.status-box[data-status="AUTHORIZED"],
-.status-box[data-status="APPROVED"],
-.status-box[data-status="COMPLETED"] {
-    border-left: 3px solid #10b981;
-}
+/* Colors for status boxes */
+.status-box[data-status="RECEIVED"] { border-color: #3b82f6; color: #3b82f6; }
+.status-box[data-status="VALIDATED"] { border-color: #10b981; color: #10b981; }
+.status-box[data-status="AUTHORIZING"] { border-color: #f59e0b; color: #f59e0b; }
+.status-box[data-status="AUTHORIZED"] { border-color: #10b981; color: #10b981; }
+.status-box[data-status="PENDING_APPROVAL"] { border-color: #f97316; color: #f97316; }
+.status-box[data-status="APPROVED"] { border-color: #10b981; color: #10b981; }
+.status-box[data-status="SENT_TO_CLEARING"] { border-color: #8b5cf6; color: #8b5cf6; }
+.status-box[data-status="COMPLETED"] { border-color: #10b981; color: #10b981; }
+.status-box[data-status="VALIDATION_FAILED"] { border-color: #ef4444; color: #ef4444; }
+.status-box[data-status="AUTHORIZATION_FAILED"] { border-color: #ef4444; color: #ef4444; }
+.status-box[data-status="REJECTED"] { border-color: #ef4444; color: #ef4444; }
+.status-box[data-status="SUSPENDED"] { border-color: #6b7280; color: #6b7280; }
+.status-box[data-status="FAILED"] { border-color: #ef4444; color: #ef4444; }
 
 /* Warning - orange */
 .status-box[data-status="PENDING_APPROVAL"],

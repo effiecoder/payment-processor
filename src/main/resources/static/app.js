@@ -491,13 +491,18 @@ function renderStatusFlow(counts) {
     ];
     
     let html = '';
-    main.forEach(s => {
-        html += `<div class="status-box ${currentFilter===s.key?'active':''}" data-status="${s.key}" onclick="filterByStatus('${s.key}')"><span class="status-name">${s.label}</span><span class="status-count">${counts[s.key]||0}</span></div>`;
+    main.forEach((s, i) => {
+        if (i > 0) html += ' <span style="color:var(--text-muted);font-size:10px;">›</span> ';
+        html += `<span class="status-box ${currentFilter===s.key?'active':''}" data-status="${s.key}" onclick="filterByStatus('${s.key}')"><span class="status-name">${s.label}</span> <span class="status-count">(${counts[s.key]||0})</span></span>`;
     });
-    html += '<div style="width:100%;height:8px;"></div>';
-    sec.forEach(s => {
-        html += `<div class="status-box ${currentFilter===s.key?'active':''}" data-status="${s.key}" onclick="filterByStatus('${s.key}')"><span class="status-name">${s.label}</span><span class="status-count">${counts[s.key]||0}</span></div>`;
+    
+    html += '<br><span style="display:block;margin:4px 0;"></span>';
+    
+    sec.forEach((s, i) => {
+        if (i > 0) html += ' <span style="color:var(--text-muted);font-size:10px;">›</span> ';
+        html += `<span class="status-box ${currentFilter===s.key?'active':''}" data-status="${s.key}" onclick="filterByStatus('${s.key}')"><span class="status-name">${s.label}</span> <span class="status-count">(${counts[s.key]||0})</span></span>`;
     });
+    
     container.innerHTML = html;
 }
 
