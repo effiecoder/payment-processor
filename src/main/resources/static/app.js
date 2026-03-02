@@ -1,4 +1,4 @@
-// Payment Processor - Frontend JavaScript
+// Payment Processor - Modern Frontend JavaScript
 
 const API_BASE = '/api';
 let token = localStorage.getItem('token');
@@ -61,6 +61,11 @@ function setupEventListeners() {
     
     // New Transaction
     document.getElementById('new-transaction-btn').addEventListener('click', () => {
+        // Set default date to tomorrow
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const form = document.getElementById('new-transaction-form');
+        form.valueDate.value = tomorrow.toISOString().split('T')[0];
         showModal('newTransaction');
     });
     
@@ -81,6 +86,15 @@ function setupEventListeners() {
     document.getElementById('close-modal').addEventListener('click', () => {
         hideModal('transaction');
     });
+    
+    // Close modal on backdrop click
+    Object.values(modals).forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+            }
+        });
+    });
 }
 
 // Auth
@@ -89,6 +103,9 @@ async function handleLogin(e) {
     
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
+    const errorEl = document.getElementById('login-error');
+    
+    errorEl.classList.add('hidden');
     
     try {
         const response = await fetch(`${API_BASE}/auth/login`, {
@@ -98,7 +115,7 @@ async function handleLogin(e) {
         });
         
         if (!response.ok) {
-            throw new Error('Invalid credentials');
+            throw new Error('Nieprawidłowa nazwa użytkownika lub hasło');
         }
         
         const data = await response.json();
@@ -107,9 +124,10 @@ async function handleLogin(e) {
         
         showMainScreen();
         loadTransactions();
+        loadStatusCounts();
     } catch (error) {
-        document.getElementById('login-error').textContent = error.message;
-        document.getElementById('login-error').classList.remove('hidden');
+        errorEl.textContent = error.message;
+        errorEl.classList.remove('hidden');
     }
 }
 
@@ -137,7 +155,7 @@ async function apiCall(endpoint, options = {}) {
     
     if (response.status === 401) {
         handleLogout();
-        throw new Error('Unauthorized');
+        throw new Error('Sesja wygasła');
     }
     
     return response;
@@ -157,16 +175,18 @@ function showMainScreen() {
 // Modals
 function showModal(name) {
     modals[name].classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
 }
 
 function hideModal(name) {
     modals[name].classList.add('hidden');
+    document.body.style.overflow = '';
 }
 
 // Transactions
 async function loadTransactions() {
     const listEl = document.getElementById('transactions-list');
-    listEl.innerHTML = '<div class="loading"><div class="spinner"></div>Ładowanie...</div>';
+    listEl.innerHTML = '<div class="loading"><div class="spinner"></div>Ładowanie transakcji...</div>';
     
     try {
         let url = `/transactions?page=${currentPage}&size=20`;
@@ -177,8 +197,13 @@ async function loadTransactions() {
         const response = await apiCall(url);
         const transactions = await response.json();
         
-        if (transactions.length === 0) {
-            listEl.innerHTML = '<div class="loading">Brak transakcji</div>';
+        if (!transactions || transactions.length === 0) {
+            listEl.innerHTML = `
+                <div class="empty-state">
+                    <div class="icon">📭</div>
+                    <p>Brak transakcji do wyświetlenia</p>
+                </div>
+            `;
             return;
         }
         
@@ -186,13 +211,12 @@ async function loadTransactions() {
             <div class="transaction-item" onclick="viewTransaction(${tx.id})">
                 <div class="tx-id">#${tx.id}</div>
                 <div class="tx-parties">
-                    <span class="sender">${tx.senderName || tx.senderAccount}</span>
-                    →
-                    <span class="receiver">${tx.receiverName || tx.receiverAccount}</span>
+                    <span class="sender">${escapeHtml(tx.senderName || tx.senderAccount)}</span>
+                    <span class="receiver">→ ${escapeHtml(tx.receiverName || tx.receiverAccount)}</span>
                 </div>
-                <div class="tx-amount">${tx.amount} ${tx.currency}</div>
+                <div class="tx-amount">${formatAmount(tx.amount)} ${tx.currency}</div>
                 <div class="tx-status status-${tx.status}">${formatStatus(tx.status)}</div>
-                <div>${formatDate(tx.valueDate)}</div>
+                <div class="tx-date">${formatDate(tx.valueDate)}</div>
             </div>
         `).join('');
         
@@ -200,7 +224,11 @@ async function loadTransactions() {
         document.getElementById('page-info').textContent = `Strona ${currentPage + 1}`;
         document.getElementById('prev-page').disabled = currentPage === 0;
     } catch (error) {
-        listEl.innerHTML = `<div class="loading error">Błąd: ${error.message}</div>`;
+        listEl.innerHTML = `
+            <div class="loading">
+                <p style="color: var(--accent-danger)">Błąd: ${escapeHtml(error.message)}</p>
+            </div>
+        `;
     }
 }
 
@@ -213,15 +241,17 @@ async function viewTransaction(id) {
         detailsEl.innerHTML = `
             <div class="detail-row">
                 <div class="detail-label">ID</div>
-                <div class="detail-value">${tx.id}</div>
+                <div class="detail-value">#${tx.id}</div>
             </div>
             <div class="detail-row">
                 <div class="detail-label">ID transakcji</div>
-                <div class="detail-value">${tx.transactionId}</div>
+                <div class="detail-value" style="font-family: monospace;">${escapeHtml(tx.transactionId || '-')}</div>
             </div>
             <div class="detail-row">
                 <div class="detail-label">Kwota</div>
-                <div class="detail-value">${tx.amount} ${tx.currency}</div>
+                <div class="detail-value" style="font-size: 20px; font-weight: 700; color: var(--accent-success);">
+                    ${formatAmount(tx.amount)} ${tx.currency}
+                </div>
             </div>
             <div class="detail-row">
                 <div class="detail-label">Data waluty</div>
@@ -229,19 +259,31 @@ async function viewTransaction(id) {
             </div>
             <div class="detail-row">
                 <div class="detail-label">Nadawca</div>
-                <div class="detail-value">${tx.senderName || ''} (${tx.senderAccount})</div>
+                <div class="detail-value">
+                    ${escapeHtml(tx.senderName || '-')}<br>
+                    <span style="font-family: monospace; color: var(--text-secondary); font-size: 12px;">
+                        ${escapeHtml(tx.senderAccount || '-')}
+                    </span>
+                </div>
             </div>
             <div class="detail-row">
                 <div class="detail-label">Odbiorca</div>
-                <div class="detail-value">${tx.receiverName || ''} (${tx.receiverAccount})</div>
+                <div class="detail-value">
+                    ${escapeHtml(tx.receiverName || '-')}<br>
+                    <span style="font-family: monospace; color: var(--text-secondary); font-size: 12px;">
+                        ${escapeHtml(tx.receiverAccount || '-')}
+                    </span>
+                </div>
             </div>
             <div class="detail-row">
                 <div class="detail-label">Tytuł</div>
-                <div class="detail-value">${tx.paymentTitle || ''}</div>
+                <div class="detail-value">${escapeHtml(tx.paymentTitle || '-')}</div>
             </div>
             <div class="detail-row">
                 <div class="detail-label">Status</div>
-                <div class="detail-value tx-status status-${tx.status}">${formatStatus(tx.status)}</div>
+                <div class="detail-value">
+                    <span class="tx-status status-${tx.status}">${formatStatus(tx.status)}</span>
+                </div>
             </div>
             <div class="detail-row">
                 <div class="detail-label">Utworzono</div>
@@ -250,7 +292,7 @@ async function viewTransaction(id) {
             ${tx.rejectionReason ? `
             <div class="detail-row">
                 <div class="detail-label">Powód odrzucenia</div>
-                <div class="detail-value" style="color: var(--danger)">${tx.rejectionReason}</div>
+                <div class="detail-value" style="color: var(--accent-danger)">${escapeHtml(tx.rejectionReason)}</div>
             </div>
             ` : ''}
         `;
@@ -260,19 +302,19 @@ async function viewTransaction(id) {
         actionsEl.innerHTML = '';
         
         if (tx.status === 'PENDING_APPROVAL') {
-            actionsEl.innerHTML += `
+            actionsEl.innerHTML = `
                 <button class="btn btn-success" onclick="approveTransaction(${tx.id})">✓ Zatwierdź</button>
-                <button class="btn btn-danger" onclick="rejectTransaction(${tx.id})">✗ Odrzuć</button>
-                <button class="btn btn-warning" onclick="suspendTransaction(${tx.id})">⏸ Wstrzymaj</button>
-                <button class="btn" onclick="editTransaction(${tx.id})">✏️ Edytuj</button>
+                <button class="btn btn-danger" onclick="rejectTransaction(${tx.id})">✕ Odrzuć</button>
+                <button class="btn" onclick="suspendTransaction(${tx.id})" style="background: var(--bg-glass); color: var(--text-primary);">⏸ Wstrzymaj</button>
+                <button class="btn" onclick="editTransaction(${tx.id})" style="background: var(--bg-glass); color: var(--text-primary);">✏️ Edytuj</button>
             `;
         } else if (tx.status === 'SUSPENDED') {
-            actionsEl.innerHTML += `
+            actionsEl.innerHTML = `
                 <button class="btn btn-primary" onclick="resumeTransaction(${tx.id})">▶️ Wznów</button>
             `;
         } else if (tx.status === 'AUTHORIZED' || tx.status === 'APPROVED') {
-            actionsEl.innerHTML += `
-                <button class="btn btn-warning" onclick="suspendTransaction(${tx.id})">⏸ Wstrzymaj</button>
+            actionsEl.innerHTML = `
+                <button class="btn" onclick="suspendTransaction(${tx.id})" style="background: var(--bg-glass); color: var(--text-primary);">⏸ Wstrzymaj</button>
             `;
         }
         
@@ -289,6 +331,7 @@ async function approveTransaction(id) {
         if (response.ok) {
             hideModal('transaction');
             loadTransactions();
+            loadStatusCounts();
         } else {
             const data = await response.json();
             alert('Błąd: ' + (data.error || 'Nie udało się zatwierdzić'));
@@ -310,6 +353,7 @@ async function rejectTransaction(id) {
         if (response.ok) {
             hideModal('transaction');
             loadTransactions();
+            loadStatusCounts();
         } else {
             const data = await response.json();
             alert('Błąd: ' + (data.error || 'Nie udało się odrzucić'));
@@ -325,6 +369,7 @@ async function suspendTransaction(id) {
         if (response.ok) {
             hideModal('transaction');
             loadTransactions();
+            loadStatusCounts();
         } else {
             const data = await response.json();
             alert('Błąd: ' + (data.error || 'Nie udało się wstrzymać'));
@@ -340,6 +385,7 @@ async function resumeTransaction(id) {
         if (response.ok) {
             hideModal('transaction');
             loadTransactions();
+            loadStatusCounts();
         } else {
             const data = await response.json();
             alert('Błąd: ' + (data.error || 'Nie udało się wznowić'));
@@ -387,6 +433,7 @@ async function handleEditTransaction(e) {
         if (response.ok) {
             hideModal('editTransaction');
             loadTransactions();
+            loadStatusCounts();
         } else {
             const data = await response.json();
             alert('Błąd: ' + (data.error || 'Nie udało się zapisać'));
@@ -423,6 +470,7 @@ async function handleNewTransaction(e) {
             hideModal('newTransaction');
             form.reset();
             loadTransactions();
+            loadStatusCounts();
         } else {
             const error = await response.json();
             alert('Błąd: ' + (error.error || 'Nie udało się utworzyć transakcji'));
@@ -452,16 +500,40 @@ function formatStatus(status) {
     return statusMap[status] || status;
 }
 
+function formatAmount(amount) {
+    return new Intl.NumberFormat('pl-PL', { 
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2 
+    }).format(amount);
+}
+
 function formatDate(dateStr) {
-    if (!dateStr) return '';
+    if (!dateStr) return '-';
     const date = new Date(dateStr);
-    return date.toLocaleDateString('pl-PL');
+    return date.toLocaleDateString('pl-PL', { 
+        day: '2-digit', 
+        month: '2-digit', 
+        year: 'numeric' 
+    });
 }
 
 function formatDateTime(dateStr) {
-    if (!dateStr) return '';
+    if (!dateStr) return '-';
     const date = new Date(dateStr);
-    return date.toLocaleString('pl-PL');
+    return date.toLocaleString('pl-PL', { 
+        day: '2-digit', 
+        month: '2-digit', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // Status Flow Diagram
@@ -480,23 +552,23 @@ function renderStatusFlow(counts) {
     
     // Main flow order
     const mainFlow = [
-        { key: 'RECEIVED', label: 'Odebrane' },
-        { key: 'VALIDATED', label: 'Zwalidowane' },
-        { key: 'AUTHORIZING', label: 'Autoryzacja' },
-        { key: 'AUTHORIZED', label: 'Autoryzowane' },
-        { key: 'PENDING_APPROVAL', label: 'Oczekuje' },
-        { key: 'APPROVED', label: 'Zatwierdzone' },
-        { key: 'SENT_TO_CLEARING', label: 'Wysłane' },
-        { key: 'COMPLETED', label: 'Zakończone' }
+        { key: 'RECEIVED', label: 'Odebrane', icon: '📥' },
+        { key: 'VALIDATED', label: 'Zwalidowane', icon: '✅' },
+        { key: 'AUTHORIZING', label: 'Autoryzacja', icon: '🔐' },
+        { key: 'AUTHORIZED', label: 'Autoryzowane', icon: '🔓' },
+        { key: 'PENDING_APPROVAL', label: 'Oczekuje', icon: '⏳' },
+        { key: 'APPROVED', label: 'Zatwierdzone', icon: '✓' },
+        { key: 'SENT_TO_CLEARING', label: 'Wysłane', icon: '📤' },
+        { key: 'COMPLETED', label: 'Zakończone', icon: '🎉' }
     ];
     
     // Secondary statuses
     const secondaryFlow = [
-        { key: 'VALIDATION_FAILED', label: 'Błąd walidacji' },
-        { key: 'AUTHORIZATION_FAILED', label: 'Błąd autoryzacji' },
-        { key: 'REJECTED', label: 'Odrzucone' },
-        { key: 'SUSPENDED', label: 'Wstrzymane' },
-        { key: 'FAILED', label: 'Nie powiodło się' }
+        { key: 'VALIDATION_FAILED', label: 'Błąd walidacji', icon: '❌' },
+        { key: 'AUTHORIZATION_FAILED', label: 'Błąd autoryzacji', icon: '⚠️' },
+        { key: 'REJECTED', label: 'Odrzucone', icon: '✕' },
+        { key: 'SUSPENDED', label: 'Wstrzymane', icon: '⏸' },
+        { key: 'FAILED', label: 'Nie powiodło się', icon: '💥' }
     ];
     
     let html = '';
@@ -507,8 +579,8 @@ function renderStatusFlow(counts) {
         const isActive = currentFilter === status.key;
         html += `
             <div class="status-box status-box-${status.key} ${isActive ? 'active' : ''}" 
-                 onclick="filterByStatus('${status.key}')">
-                <span class="status-name">${status.label}</span>
+                 onclick="filterByStatus('${status.key}')" title="Kliknij aby filtrować">
+                <span class="status-name">${status.icon} ${status.label}</span>
                 <span class="status-count">${count}</span>
             </div>
         `;
@@ -517,7 +589,7 @@ function renderStatusFlow(counts) {
         }
     });
     
-    html += '<div style="width:100%; height:10px;"></div>';
+    html += '<div style="width:100%; height:16px;"></div>';
     
     // Secondary flow
     secondaryFlow.forEach((status, index) => {
@@ -525,8 +597,8 @@ function renderStatusFlow(counts) {
         const isActive = currentFilter === status.key;
         html += `
             <div class="status-box status-box-${status.key} ${isActive ? 'active' : ''}" 
-                 onclick="filterByStatus('${status.key}')">
-                <span class="status-name">${status.label}</span>
+                 onclick="filterByStatus('${status.key}')" title="Kliknij aby filtrować">
+                <span class="status-name">${status.icon} ${status.label}</span>
                 <span class="status-count">${count}</span>
             </div>
         `;
@@ -549,8 +621,8 @@ function renderStatusFlow(counts) {
 function filterByStatus(status) {
     currentFilter = status;
     document.getElementById('status-filter').value = status;
-    currentPage = Transactions();
-    load0;
+    currentPage = 0;
+    loadTransactions();
     loadStatusCounts();
 }
 

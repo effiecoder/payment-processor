@@ -4,51 +4,60 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payment Processor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="app-container">
         <!-- Login Screen -->
-        <div id="login-screen" class="screen">
+        <div id="login-screen" class="screen login-screen">
             <div class="login-box">
-                <h1>💰 Payment Processor</h1>
+                <h1>💎 Payment Processor</h1>
+                <p class="subtitle">Nowoczesny system płatności ISO20022</p>
                 <form id="login-form">
-                    <input type="text" id="username" placeholder="Username" required>
-                    <input type="password" id="password" placeholder="Password" required>
-                    <button type="submit">Zaloguj</button>
+                    <div class="input-group">
+                        <input type="text" id="username" placeholder="Nazwa użytkownika" required>
+                    </div>
+                    <div class="input-group">
+                        <input type="password" id="password" placeholder="Hasło" required>
+                    </div>
+                    <button type="submit">Zaloguj się</button>
                 </form>
                 <p id="login-error" class="error hidden"></p>
             </div>
         </div>
 
         <!-- Main Screen -->
-        <div id="main-screen" class="screen hidden">
+        <div id="main-screen" class="screen main-screen hidden">
             <header>
-                <h1>💰 Payment Processor</h1>
+                <h1>💎 Payment Processor</h1>
                 <div class="header-actions">
-                    <button id="refresh-btn" class="icon-btn">🔄</button>
-                    <button id="logout-btn" class="icon-btn">🚪</button>
+                    <button id="refresh-btn" class="icon-btn" title="Odśwież">↻</button>
+                    <button id="logout-btn" class="icon-btn" title="Wyloguj">⏻</button>
                 </div>
             </header>
 
             <div class="toolbar">
                 <select id="status-filter">
-                    <option value="">Wszystkie statusy</option>
-                    <option value="RECEIVED">Odebrane</option>
-                    <option value="VALIDATED">Zwalidowane</option>
-                    <option value="PENDING_APPROVAL">Oczekuje na zatwierdzenie</option>
-                    <option value="AUTHORIZED">Autoryzowane</option>
-                    <option value="APPROVED">Zatwierdzone</option>
-                    <option value="REJECTED">Odrzucone</option>
-                    <option value="SUSPENDED">Wstrzymane</option>
-                    <option value="SENT_TO_CLEARING">Wysłane do clearingu</option>
+                    <option value="">📋 Wszystkie statusy</option>
+                    <option value="RECEIVED">📥 Odebrane</option>
+                    <option value="VALIDATED">✅ Zwalidowane</option>
+                    <option value="PENDING_APPROVAL">⏳ Oczekuje na zatwierdzenie</option>
+                    <option value="AUTHORIZED">🔐 Autoryzowane</option>
+                    <option value="APPROVED">✓ Zatwierdzone</option>
+                    <option value="REJECTED">✕ Odrzucone</option>
+                    <option value="SUSPENDED">⏸ Wstrzymane</option>
+                    <option value="SENT_TO_CLEARING">📤 Wysłane do clearingu</option>
+                    <option value="COMPLETED">🎉 Zakończone</option>
                 </select>
-                <button id="new-transaction-btn" class="btn btn-primary">+ Nowa transakcja</button>
+                <button id="new-transaction-btn" class="btn btn-primary">➕ Nowa transakcja</button>
             </div>
 
             <!-- Status Flow Diagram -->
             <div class="status-flow" id="status-flow">
-                <div class="status-flow-title">📊 Przepływ statusów</div>
+                <div class="status-flow-title">📊 Przepływ statusów transakcji</div>
                 <div class="status-flow-diagram" id="status-flow-diagram">
                     <!-- Status boxes will be loaded here -->
                 </div>
@@ -70,8 +79,8 @@
         <div id="transaction-modal" class="modal hidden">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2>Szczegóły transakcji</h2>
-                    <button class="close-btn" id="close-modal">×</button>
+                    <h2>📋 Szczegóły transakcji</h2>
+                    <button class="close-btn" id="close-modal">✕</button>
                 </div>
                 <div class="modal-body" id="transaction-details">
                     <!-- Transaction details will be loaded here -->
@@ -86,28 +95,29 @@
         <div id="new-transaction-modal" class="modal hidden">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2>Nowa transakcja</h2>
-                    <button class="close-btn" id="close-new-modal">×</button>
+                    <h2>➕ Nowa transakcja</h2>
+                    <button class="close-btn" id="close-new-modal">✕</button>
                 </div>
                 <form id="new-transaction-form">
                     <div class="form-group">
                         <label>ID transakcji (pain)</label>
-                        <input type="text" name="transactionId" required>
+                        <input type="text" name="transactionId" required placeholder="np. TXN-2026-001">
                     </div>
                     <div class="form-group">
                         <label>ID wiadomości (pain)</label>
-                        <input type="text" name="painMessageId" required>
+                        <input type="text" name="painMessageId" required placeholder="np. MSG-001">
                     </div>
                     <div class="form-group">
                         <label>Kwota</label>
-                        <input type="number" step="0.01" name="amount" required>
+                        <input type="number" step="0.01" name="amount" required placeholder="0.00">
                     </div>
                     <div class="form-group">
                         <label>Waluta</label>
                         <select name="currency" required>
-                            <option value="PLN">PLN</option>
-                            <option value="EUR">EUR</option>
-                            <option value="USD">USD</option>
+                            <option value="PLN">🇵🇱 PLN</option>
+                            <option value="EUR">🇪🇺 EUR</option>
+                            <option value="USD">🇺🇸 USD</option>
+                            <option value="GBP">🇬🇧 GBP</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -116,25 +126,25 @@
                     </div>
                     <div class="form-group">
                         <label>Nazwa nadawcy</label>
-                        <input type="text" name="senderName">
+                        <input type="text" name="senderName" placeholder="Jan Kowalski">
                     </div>
                     <div class="form-group">
                         <label>Rachunek nadawcy (IBAN)</label>
-                        <input type="text" name="senderAccount" required>
+                        <input type="text" name="senderAccount" required placeholder="PL61 1090 1014 0000 0712 1981 2874">
                     </div>
                     <div class="form-group">
                         <label>Nazwa odbiorcy</label>
-                        <input type="text" name="receiverName">
+                        <input type="text" name="receiverName" placeholder="Anna Nowak">
                     </div>
                     <div class="form-group">
                         <label>Rachunek odbiorcy (IBAN)</label>
-                        <input type="text" name="receiverAccount" required>
+                        <input type="text" name="receiverAccount" required placeholder="PL61 1090 1014 0000 0712 1981 2875">
                     </div>
                     <div class="form-group">
                         <label>Tytuł płatności</label>
-                        <textarea name="paymentTitle" rows="3"></textarea>
+                        <textarea name="paymentTitle" rows="3" placeholder="Opis transakcji..."></textarea>
                     </div>
-                    <button type="submit" class="btn btn-primary">Utwórz</button>
+                    <button type="submit" class="btn btn-primary">Utwórz transakcję</button>
                 </form>
             </div>
         </div>
@@ -143,8 +153,8 @@
         <div id="edit-transaction-modal" class="modal hidden">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2>Edytuj transakcję</h2>
-                    <button class="close-btn" id="close-edit-modal">×</button>
+                    <h2>✏️ Edytuj transakcję</h2>
+                    <button class="close-btn" id="close-edit-modal">✕</button>
                 </div>
                 <form id="edit-transaction-form">
                     <input type="hidden" name="id">
@@ -160,7 +170,7 @@
                         <label>Tytuł płatności</label>
                         <textarea name="paymentTitle" rows="3"></textarea>
                     </div>
-                    <button type="submit" class="btn btn-primary">Zapisz</button>
+                    <button type="submit" class="btn btn-primary">Zapisz zmiany</button>
                 </form>
             </div>
         </div>
