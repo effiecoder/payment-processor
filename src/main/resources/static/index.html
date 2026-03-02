@@ -39,310 +39,271 @@
                 </div>
             </header>
 
-            <div class="toolbar">
-                <select id="status-filter">
-                    <option value="">📋 Wszystkie statusy</option>
-                    <option value="RECEIVED">📥 Odebrane</option>
-                    <option value="VALIDATED">✅ Zwalidowane</option>
-                    <option value="PENDING_APPROVAL">⏳ Oczekuje na zatwierdzenie</option>
-                    <option value="AUTHORIZED">🔐 Autoryzowane</option>
-                    <option value="APPROVED">✓ Zatwierdzone</option>
-                    <option value="REJECTED">✕ Odrzucone</option>
-                    <option value="SUSPENDED">⏸ Wstrzymane</option>
-                    <option value="SENT_TO_CLEARING">📤 Wysłane do clearingu</option>
-                    <option value="COMPLETED">🎉 Zakończone</option>
-                </select>
-                <button id="new-transaction-btn" class="btn btn-primary">➕ Nowa transakcja</button>
-            </div>
-
-            <!-- Status Flow Diagram -->
-            <div class="status-flow" id="status-flow">
-                <div class="status-flow-title">Przepływ statusów</div>
-                <div class="status-flow-diagram" id="status-flow-diagram">
-                    <!-- Status boxes will be loaded here -->
-                </div>
-                <button class="clear-filter-btn" id="clear-filter-btn" onclick="clearStatusFilter()">✕ Wyczyść filtr</button>
-            </div>
-
-            <div class="transactions-list" id="transactions-list">
-                <!-- Transactions will be loaded here -->
-            </div>
-
-            <div class="pagination" id="pagination">
-                <button id="prev-page">← Poprzednia</button>
-                <span id="page-info">Strona 1</span>
-                <button id="next-page">Następna →</button>
-            </div>
-        </div>
-
-        <!-- Transaction Detail Modal -->
-        <div id="transaction-modal" class="modal hidden">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>📋 Szczegóły transakcji</h2>
-                    <button class="close-btn" id="close-modal">✕</button>
-                </div>
-                <div class="modal-body" id="transaction-details">
-                    <!-- Transaction details will be loaded here -->
-                </div>
-                <div class="modal-actions" id="modal-actions">
-                    <!-- Action buttons -->
-                </div>
-            </div>
-        </div>
-
-        <!-- New Transaction Modal -->
-        <div id="new-transaction-modal" class="modal hidden">
-            <div class="modal-content modal-large">
-                <div class="modal-header">
-                    <h2>➕ Nowa transakcja ISO20022</h2>
-                    <button class="close-btn" id="close-new-modal">✕</button>
-                </div>
-                <form id="new-transaction-form">
-                    <!-- Nagłówek wiadomości -->
-                    <fieldset class="form-section">
-                        <legend>📨 Nagłówek wiadomości</legend>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Message ID</label>
-                                <input type="text" name="messageId" placeholder="UUID lub unikalne ID">
-                            </div>
-                            -group">
-                                <div class="form<label>Payment Instruction ID</label>
-                                <input type="text" name="paymentInstructionId" placeholder="ID instrukcji płatności">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Data utworzenia</label>
-                                <input type="datetime-local" name="creationDateTime">
-                            </div>
-                            <div class="form-group">
-                                <label>Metoda płatności</label>
-                                <select name="paymentMethod">
-                                    <option value="TRN">TRN - Transfer</option>
-                                    <option value="TRA">TRA - Treasury</option>
-                                    <option value="CCB">CCB - Clearing</option>
-                                </select>
-                            </div>
-                        </div>
-                    </fieldset>
-
-                    <!-- Dane płatności -->
-                    <fieldset class="form-section">
-                        <legend>💰 Dane płatności</legend>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Kwota *</label>
-                                <input type="number" step="0.01" name="amount" required placeholder="0.00">
-                            </div>
-                            <div class="form-group">
-                                <label>Waluta *</label>
-                                <select name="currency" required>
-                                    <option value="PLN">PLN</option>
-                                    <option value="EUR">EUR</option>
-                                    <option value="USD">USD</option>
-                                    <option value="GBP">GBP</option>
-                                    <option value="CHF">CHF</option>
-                                    <option value="SEK">SEK</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Data waluty *</label>
-                                <input type="date" name="valueDate" required>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Data realizacji</label>
-                                <input type="date" name="requestedExecutionDate">
-                            </div>
-                            <div class="form-group">
-                                <label>Charge Bearer</label>
-                                <select name="chargeBearer">
-                                    <option value="SLEV">SLEV - Shared</option>
-                                    <option value="SHAR">SHAR - Shared</option>
-                                    <option value="DEBT">DEBT - Debtor</option>
-                                    <option value="CRCD">CRCD - Creditor</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Batch Booking</label>
-                                <select name="batchBooking">
-                                    <option value="true">Tak</option>
-                                    <option value="false">Nie</option>
-                                </select>
-                            </div>
-                        </div>
-                    </fieldset>
-
-                    <!-- Nadawca (Debtor) -->
-                    <fieldset class="form-section">
-                        <legend>📤 Nadawca (Debtor)</legend>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Nazwa</label>
-                                <input type="text" name="debtorName" placeholder="Jan Kowalski">
-                            </div>
-                            <div class="form-group">
-                                <label>LEI (Legal Entity Identifier)</label>
-                                <input type="text" name="debtorLegalName" placeholder="np. 259400L3KBX7BZ4UVL84">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Rachunek (IBAN) *</label>
-                                <input type="text" name="debtorAccountIban" required placeholder="PL61 1090 1014 0000 0712 1981 2874">
-                            </div>
-                            <div class="form-group">
-                                <label> BIC/SWIFT banku</label>
-                                <input type="text" name="debtorAgentBic" placeholder="np. INGBPLPW">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Adres</label>
-                                <input type="text" name="debtorAddressLine" placeholder="Ulica, numer">
-                            </div>
-                            <div class="form-group">
-                                <label>Kraj</label>
-                                <input type="text" name="debtorCountry" placeholder="PL" maxlength="2">
-                            </div>
-                        </div>
-                    </fieldset>
-
-                    <!-- Odbiorca (Creditor) -->
-                    <fieldset class="form-section">
-                        <legend>📥 Odbiorca (Creditor)</legend>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Nazwa</label>
-                                <input type="text" name="creditorName" placeholder="Anna Nowak">
-                            </div>
-                            <div class="form-group">
-                                <label>LEI (Legal Entity Identifier)</label>
-                                <input type="text" name="creditorLegalName" placeholder="259400L3KBX7BZ4UVL84">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Rachunek (IBAN) *</label>
-                                <input type="text" name="creditorAccountIban" required placeholder="PL61 1090 1014 0000 0712 1981 2875">
-                            </div>
-                            <div class="form-group">
-                                <label>BIC/SWIFT banku</label>
-                                <input type="text" name="creditorAgentBic" placeholder="np. INGBPLPW">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Adres</label>
-                                <input type="text" name="creditorAddressLine" placeholder="Ulica, numer">
-                            </div>
-                            <div class="form-group">
-                                <label>Kraj</label>
-                                <input type="text" name="creditorCountry" placeholder="PL" maxlength="2">
-                            </div>
-                        </div>
-                    </fieldset>
-
-                    <!-- Informacje o płatności -->
-                    <fieldset class="form-section">
-                        <legend>📝 Informacje o płatności</legend>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Tytuł płatności (Unstructured)</label>
-                                <textarea name="remittanceUnstructured" rows="2" placeholder="Opis transakcji..."></textarea>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Referencja płatności (Structured)</label>
-                                <input type="text" name="remittanceReference" placeholder="np. FACTURA/2026/001">
-                            </div>
-                            <div class="form-group">
-                                <label>Typ referencji</label>
-                                <select name="remittanceStructuredType">
-                                    <option value="">Wybierz...</option>
-                                    <option value="SCOR">SCOR - ISO 1745</option>
-                                    <option value="RF01">RF01 - Creditor Reference</option>
-                                    <option value="PMNT">PMNT - Payment</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Kod celu płatności (ISO20022)</label>
-                                <select name="purposeCode">
-                                    <option value="">Wybierz...</option>
-                                    <option value="SUPP">SUPP - Supply Chain</option>
-                                    <option value="PENS">PENS - Pension</option>
-                                    <option value="SALA">SALA - Salary</option>
-                                    <option value="TAXS">TAXS - Tax</option>
-                                    <option value="TRAD">TRAD - Trade</option>
-                                    <option value="TREA">TREA - Treasury</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>ID transakcji</label>
-                                <input type="text" name="transactionId" placeholder="np. TXN-2026-001">
-                            </div>
-                        </div>
-                    </fieldset>
-
-                    <!-- Ultimate Parties -->
-                    <fieldset class="form-section">
-                        <legend>🔄 Ultimate Parties (opcjonalne)</legend>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Ultimate Debtor</label>
-                                <input type="text" name="ultimateDebtorName" placeholder="Ostateczny dłużnik">
-                            </div>
-                            <div class="form-group">
-                                <label>Ultimate Debtor IBAN</label>
-                                <input type="text" name="ultimateDebtorAccountIban" placeholder="IBAN">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Ultimate Creditor</label>
-                                <input type="text" name="ultimateCreditorName" placeholder="Ostateczny wierzyciel">
-                            </div>
-                            <div class="form-group">
-                                <label>Ultimate Creditor IBAN</label>
-                                <input type="text" name="ultimateCreditorAccountIban" placeholder="IBAN">
-                            </div>
-                        </div>
-                    </fieldset>
-
-                    <button type="submit" class="btn btn-primary">Utwórz transakcję</button>
-                </form>
-            </div>
-        </div>
-
-        <!-- Edit Transaction Modal -->
-        <div id="edit-transaction-modal" class="modal hidden">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>✏️ Edytuj transakcję</h2>
-                    <button class="close-btn" id="close-edit-modal">✕</button>
-                </div>
-                <form id="edit-transaction-form">
-                    <input type="hidden" name="id">
-                    <div class="form-group">
-                        <label>Kwota</label>
-                        <input type="number" step="0.01" name="amount">
+            <!-- Master-Detail Layout -->
+            <div class="master-detail">
+                <!-- Left Panel: List -->
+                <div class="master-panel" id="master-panel">
+                    <div class="toolbar-compact">
+                        <select id="status-filter">
+                            <option value="">📋 Wszystkie</option>
+                            <option value="RECEIVED">📥 Odebrane</option>
+                            <option value="VALIDATED">✅ Zwalidowane</option>
+                            <option value="PENDING_APPROVAL">⏳ Oczekuje</option>
+                            <option value="AUTHORIZED">🔐 Autoryzowane</option>
+                            <option value="APPROVED">✓ Zatwierdzone</option>
+                            <option value="REJECTED">✕ Odrzucone</option>
+                            <option value="SUSPENDED">⏸ Wstrzymane</option>
+                        </select>
+                        <button id="new-transaction-btn" class="btn btn-primary btn-sm">➕</button>
                     </div>
-                    <div class="form-group">
-                        <label>Data waluty</label>
-                        <input type="date" name="valueDate">
+
+                    <!-- Status Flow (compact) -->
+                    <div class="status-flow-compact" id="status-flow">
+                        <div class="status-flow-diagram" id="status-flow-diagram"></div>
                     </div>
-                    <div class="form-group">
-                        <label>Tytuł płatności</label>
-                        <textarea name="paymentTitle" rows="3"></textarea>
+
+                    <div class="transactions-list-compact" id="transactions-list"></div>
+                    
+                    <div class="pagination-compact" id="pagination">
+                        <button id="prev-page">←</button>
+                        <span id="page-info">1</span>
+                        <button id="next-page">→</button>
                     </div>
-                    <button type="submit" class="btn btn-primary">Zapisz zmiany</button>
-                </form>
+                </div>
+
+                <!-- Right Panel: Detail/Form -->
+                <div class="detail-panel" id="detail-panel">
+                    <!-- Empty state -->
+                    <div class="detail-empty" id="detail-empty">
+                        <div class="icon">👈</div>
+                        <p>Wybierz transakcję z listy<br>lub dodaj nową</p>
+                    </div>
+
+                    <!-- Transaction Form (create/edit/view) -->
+                    <div class="detail-content hidden" id="detail-content">
+                        <div class="detail-header">
+                            <h2 id="detail-title">Szczegóły transakcji</h2>
+                            <div class="detail-actions" id="detail-actions"></div>
+                        </div>
+                        <form id="transaction-form">
+                            <!-- Nagłówek wiadomości -->
+                            <fieldset class="form-section">
+                                <legend>📨 Nagłówek wiadomości</legend>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Message ID</label>
+                                        <input type="text" name="messageId" readonly>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Payment Instruction ID</label>
+                                        <input type="text" name="paymentInstructionId" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Data utworzenia</label>
+                                        <input type="datetime-local" name="creationDateTime" readonly>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Metoda płatności</label>
+                                        <select name="paymentMethod" disabled>
+                                            <option value="TRN">TRN - Transfer</option>
+                                            <option value="TRA">TRA - Treasury</option>
+                                            <option value="CCB">CCB - Clearing</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </fieldset>
+
+                            <!-- Dane płatności -->
+                            <fieldset class="form-section">
+                                <legend>💰 Dane płatności</legend>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Kwota</label>
+                                        <input type="number" step="0.01" name="amount" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Waluta</label>
+                                        <select name="currency" required>
+                                            <option value="PLN">PLN</option>
+                                            <option value="EUR">EUR</option>
+                                            <option value="USD">USD</option>
+                                            <option value="GBP">GBP</option>
+                                            <option value="CHF">CHF</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Data waluty</label>
+                                        <input type="date" name="valueDate" required>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Data realizacji</label>
+                                        <input type="date" name="requestedExecutionDate">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Charge Bearer</label>
+                                        <select name="chargeBearer">
+                                            <option value="SLEV">SLEV - Shared</option>
+                                            <option value="SHAR">SHAR - Shared</option>
+                                            <option value="DEBT">DEBT - Debtor</option>
+                                            <option value="CRCD">CRCD - Creditor</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </fieldset>
+
+                            <!-- Nadawca (Debtor) -->
+                            <fieldset class="form-section">
+                                <legend>📤 Nadawca (Debtor)</legend>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Nazwa</label>
+                                        <input type="text" name="debtorName">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>LEI</label>
+                                        <input type="text" name="debtorLegalName">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>IBAN</label>
+                                        <input type="text" name="debtorAccountIban" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>BIC/SWIFT</label>
+                                        <input type="text" name="debtorAgentBic">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Adres</label>
+                                        <input type="text" name="debtorAddressLine">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Kraj</label>
+                                        <input type="text" name="debtorCountry" maxlength="2">
+                                    </div>
+                                </div>
+                            </fieldset>
+
+                            <!-- Odbiorca (Creditor) -->
+                            <fieldset class="form-section">
+                                <legend>📥 Odbiorca (Creditor)</legend>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Nazwa</label>
+                                        <input type="text" name="creditorName">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>LEI</label>
+                                        <input type="text" name="creditorLegalName">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>IBAN</label>
+                                        <input type="text" name="creditorAccountIban" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>BIC/SWIFT</label>
+                                        <input type="text" name="creditorAgentBic">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Adres</label>
+                                        <input type="text" name="creditorAddressLine">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Kraj</label>
+                                        <input type="text" name="creditorCountry" maxlength="2">
+                                    </div>
+                                </div>
+                            </fieldset>
+
+                            <!-- Remittance -->
+                            <fieldset class="form-section">
+                                <legend>📝 Remittance</legend>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Tytuł (Unstructured)</label>
+                                        <textarea name="remittanceUnstructured" rows="2"></textarea>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Referencja (Structured)</label>
+                                        <input type="text" name="remittanceReference">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Typ referencji</label>
+                                        <select name="remittanceStructuredType">
+                                            <option value="">Wybierz...</option>
+                                            <option value="SCOR">SCOR</option>
+                                            <option value="RF01">RF01</option>
+                                            <option value="PMNT">PMNT</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Kod celu</label>
+                                        <select name="purposeCode">
+                                            <option value="">Wybierz...</option>
+                                            <option value="SUPP">SUPP - Supply Chain</option>
+                                            <option value="PENS">PENS - Pension</option>
+                                            <option value="SALA">SALA - Salary</option>
+                                            <option value="TAXS">TAXS - Tax</option>
+                                            <option value="TRAD">TRAD - Trade</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Transaction ID</label>
+                                        <input type="text" name="transactionId">
+                                    </div>
+                                </div>
+                            </fieldset>
+
+                            <!-- Status & Audit -->
+                            <fieldset class="form-section">
+                                <legend>📋 Status & Audit</legend>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Status</label>
+                                        <input type="text" name="status" readonly class="status-readonly">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Utworzono</label>
+                                        <input type="text" name="createdAt" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Autoryzowane przez</label>
+                                        <input type="text" name="authorizedBy" readonly>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Zatwierdzone przez</label>
+                                        <input type="text" name="approvedBy" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-row" id="rejection-row" style="display:none;">
+                                    <div class="form-group">
+                                        <label style="color: var(--accent-danger);">Powód odrzucenia</label>
+                                        <input type="text" name="rejectionReason" readonly style="color: var(--accent-danger);">
+                                    </div>
+                                </div>
+                            </fieldset>
+
+                            <!-- Form Actions -->
+                            <div class="form-actions" id="form-actions"></div>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

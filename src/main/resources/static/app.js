@@ -4,6 +4,8 @@ const API_BASE = '/api';
 let token = localStorage.getItem('token');
 let currentPage = 0;
 let currentFilter = '';
+let currentViewMode = 'view'; // 'view', 'edit', 'create'
+let currentTransactionId = null;
 
 // DOM Elements
 const screens = {
@@ -11,10 +13,13 @@ const screens = {
     main: document.getElementById('main-screen')
 };
 
-const modals = {
-    transaction: document.getElementById('transaction-modal'),
-    newTransaction: document.getElementById('new-transaction-modal'),
-    editTransaction: document.getElementById('edit-transaction-modal')
+const detailPanel = {
+    empty: document.getElementById('detail-empty'),
+    content: document.getElementById('detail-content'),
+    title: document.getElementById('detail-title'),
+    actions: document.getElementById('detail-actions'),
+    form: document.getElementById('transaction-form'),
+    formActions: document.getElementById('form-actions')
 };
 
 // Initialize
@@ -60,41 +65,10 @@ function setupEventListeners() {
     });
     
     // New Transaction
-    document.getElementById('new-transaction-btn').addEventListener('click', () => {
-        // Set default date to tomorrow
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const form = document.getElementById('new-transaction-form');
-        form.valueDate.value = tomorrow.toISOString().split('T')[0];
-        showModal('newTransaction');
-    });
+    document.getElementById('new-transaction-btn').addEventListener('click', showCreateForm);
     
-    document.getElementById('close-new-modal').addEventListener('click', () => {
-        hideModal('newTransaction');
-    });
-    
-    document.getElementById('new-transaction-form').addEventListener('submit', handleNewTransaction);
-    
-    // Edit Transaction
-    document.getElementById('close-edit-modal').addEventListener('click', () => {
-        hideModal('editTransaction');
-    });
-    
-    document.getElementById('edit-transaction-form').addEventListener('submit', handleEditTransaction);
-    
-    // Transaction Modal
-    document.getElementById('close-modal').addEventListener('click', () => {
-        hideModal('transaction');
-    });
-    
-    // Close modal on backdrop click
-    Object.values(modals).forEach(modal => {
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.classList.add('hidden');
-            }
-        });
-    });
+    // Form submit
+    detailPanel.form.addEventListener('submit', handleFormSubmit);
 }
 
 // Auth
@@ -172,161 +146,283 @@ function showMainScreen() {
     screens.main.classList.remove('hidden');
 }
 
-// Modals
-function showModal(name) {
-    modals[name].classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
+// Detail Panel
+function showDetailEmpty() {
+    detailPanel.empty.classList.remove('hidden');
+    detailPanel.content.classList.add('hidden');
 }
 
-function hideModal(name) {
-    modals[name].classList.add('hidden');
-    document.body.style.overflow = '';
+function showDetailContent() {
+    detailPanel.empty.classList.add('hidden');
+    detailPanel.content.classList.remove('hidden');
 }
 
-// Transactions
-async function loadTransactions() {
-    const listEl = document.getElementById('transactions-list');
-    listEl.innerHTML = '<div class="loading"><div class="spinner"></div>Ładowanie transakcji...</div>';
+// Form Modes
+function showCreateForm() {
+    currentViewMode = 'create';
+    currentTransactionId = null;
     
-    try {
-        let url = `/transactions?page=${currentPage}&size=20`;
-        if (currentFilter) {
-            url = `/transactions/status/${currentFilter}`;
-        }
-        
-        const response = await apiCall(url);
-        const transactions = await response.json();
-        
-        if (!transactions || transactions.length === 0) {
-            listEl.innerHTML = `
-                <div class="empty-state">
-                    <div class="icon">📭</div>
-                    <p>Brak transakcji do wyświetlenia</p>
-                </div>
-            `;
-            return;
-        }
-        
-        listEl.innerHTML = transactions.map(tx => `
-            <div class="transaction-item" onclick="viewTransaction(${tx.id})">
-                <div class="tx-id">#${tx.id}</div>
-                <div class="tx-parties">
-                    <div class="party-row">
-                        <span class="party-label">Od:</span>
-                        <span class="party-name">${escapeHtml(tx.senderName || '-')}</span>
-                        <span class="party-account">${formatIban(tx.senderAccount)}</span>
-                    </div>
-                    <div class="party-row">
-                        <span class="party-label">Do:</span>
-                        <span class="party-name">${escapeHtml(tx.receiverName || '-')}</span>
-                        <span class="party-account">${formatIban(tx.receiverAccount)}</span>
-                    </div>
-                </div>
-                <div class="tx-amount">${formatAmount(tx.amount)} ${tx.currency}</div>
-                <div class="tx-status status-${tx.status}">${formatStatus(tx.status)}</div>
-                <div class="tx-date">${formatDate(tx.valueDate)}</div>
-            </div>
-        `).join('');
-        
-        // Update pagination
-        document.getElementById('page-info').textContent = `Strona ${currentPage + 1}`;
-        document.getElementById('prev-page').disabled = currentPage === 0;
-    } catch (error) {
-        listEl.innerHTML = `
-            <div class="loading">
-                <p style="color: var(--accent-danger)">Błąd: ${escapeHtml(error.message)}</p>
-            </div>
-        `;
-    }
+    // Clear form
+    detailPanel.form.reset();
+    detailPanel.form.querySelectorAll('input, select, textarea').forEach(el => {
+        el.removeAttribute('readonly');
+        el.removeAttribute('disabled');
+    });
+    
+    // Set default date
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    detailPanel.form.valueDate.value = tomorrow.toISOString().split('T')[0];
+    
+    // Set title and actions
+    detailPanel.title.textContent = '➕ Nowa transakcja ISO20022';
+    detailPanel.actions.innerHTML = `
+        <button type="button" class="btn" onclick="showDetailEmpty()">Anuluj</button>
+    `;
+    detailPanel.formActions.innerHTML = `
+        <button type="submit" class="btn btn-primary">Utwórz transakcję</button>
+    `;
+    
+    // Hide status section
+    const statusSection = detailPanel.form.querySelector('input[name="status"]')?.closest('fieldset');
+    if (statusSection) statusSection.style.display = 'none';
+    
+    showDetailContent();
 }
 
-async function viewTransaction(id) {
+async function showViewForm(id) {
     try {
         const response = await apiCall(`/transactions/${id}`);
         const tx = await response.json();
         
-        const detailsEl = document.getElementById('transaction-details');
-        detailsEl.innerHTML = `
-            <div class="detail-row">
-                <div class="detail-label">ID</div>
-                <div class="detail-value">#${tx.id}</div>
-            </div>
-            <div class="detail-row">
-                <div class="detail-label">ID transakcji</div>
-                <div class="detail-value" style="font-family: monospace;">${escapeHtml(tx.transactionId || '-')}</div>
-            </div>
-            <div class="detail-row">
-                <div class="detail-label">Kwota</div>
-                <div class="detail-value" style="font-size: 20px; font-weight: 700; color: var(--accent-success);">
-                    ${formatAmount(tx.amount)} ${tx.currency}
-                </div>
-            </div>
-            <div class="detail-row">
-                <div class="detail-label">Data waluty</div>
-                <div class="detail-value">${formatDate(tx.valueDate)}</div>
-            </div>
-            <div class="detail-row">
-                <div class="detail-label">Nadawca</div>
-                <div class="detail-value">
-                    ${escapeHtml(tx.senderName || '-')}<br>
-                    <span style="font-family: monospace; color: var(--text-secondary); font-size: 12px;">
-                        ${escapeHtml(tx.senderAccount || '-')}
-                    </span>
-                </div>
-            </div>
-            <div class="detail-row">
-                <div class="detail-label">Odbiorca</div>
-                <div class="detail-value">
-                    ${escapeHtml(tx.receiverName || '-')}<br>
-                    <span style="font-family: monospace; color: var(--text-secondary); font-size: 12px;">
-                        ${escapeHtml(tx.receiverAccount || '-')}
-                    </span>
-                </div>
-            </div>
-            <div class="detail-row">
-                <div class="detail-label">Tytuł</div>
-                <div class="detail-value">${escapeHtml(tx.paymentTitle || '-')}</div>
-            </div>
-            <div class="detail-row">
-                <div class="detail-label">Status</div>
-                <div class="detail-value">
-                    <span class="tx-status status-${tx.status}">${formatStatus(tx.status)}</span>
-                </div>
-            </div>
-            <div class="detail-row">
-                <div class="detail-label">Utworzono</div>
-                <div class="detail-value">${formatDateTime(tx.createdAt)}</div>
-            </div>
-            ${tx.rejectionReason ? `
-            <div class="detail-row">
-                <div class="detail-label">Powód odrzucenia</div>
-                <div class="detail-value" style="color: var(--accent-danger)">${escapeHtml(tx.rejectionReason)}</div>
-            </div>
-            ` : ''}
-        `;
+        currentViewMode = 'view';
+        currentTransactionId = id;
         
-        // Action buttons based on status
-        const actionsEl = document.getElementById('modal-actions');
-        actionsEl.innerHTML = '';
+        // Fill form with data
+        fillFormWithTransaction(tx);
         
+        // Make fields readonly
+        detailPanel.form.querySelectorAll('input, select, textarea').forEach(el => {
+            el.setAttribute('readonly', true);
+            el.setAttribute('disabled', true);
+        });
+        
+        // Set title and actions
+        detailPanel.title.textContent = `📋 Transakcja #${id}`;
+        
+        let actionsHtml = `<button type="button" class="btn" onclick="showDetailEmpty()">Zamknij</button>`;
+        
+        // Add action buttons based on status
         if (tx.status === 'PENDING_APPROVAL') {
-            actionsEl.innerHTML = `
-                <button class="btn btn-success" onclick="approveTransaction(${tx.id})">✓ Zatwierdź</button>
-                <button class="btn btn-danger" onclick="rejectTransaction(${tx.id})">✕ Odrzuć</button>
-                <button class="btn" onclick="suspendTransaction(${tx.id})" style="background: var(--bg-glass); color: var(--text-primary);">⏸ Wstrzymaj</button>
-                <button class="btn" onclick="editTransaction(${tx.id})" style="background: var(--bg-glass); color: var(--text-primary);">✏️ Edytuj</button>
+            actionsHtml += `
+                <button type="button" class="btn btn-success" onclick="approveTransaction(${id})">✓ Zatwierdź</button>
+                <button type="button" class="btn btn-danger" onclick="rejectTransaction(${id})">✕ Odrzuć</button>
+                <button type="button" class="btn" onclick="showEditForm(${id})">✏️ Edytuj</button>
+                <button type="button" class="btn" onclick="suspendTransaction(${id})">⏸ Wstrzymaj</button>
             `;
         } else if (tx.status === 'SUSPENDED') {
-            actionsEl.innerHTML = `
-                <button class="btn btn-primary" onclick="resumeTransaction(${tx.id})">▶️ Wznów</button>
-            `;
+            actionsHtml += `<button type="button" class="btn btn-primary" onclick="resumeTransaction(${id})">▶️ Wznów</button>`;
         } else if (tx.status === 'AUTHORIZED' || tx.status === 'APPROVED') {
-            actionsEl.innerHTML = `
-                <button class="btn" onclick="suspendTransaction(${tx.id})" style="background: var(--bg-glass); color: var(--text-primary);">⏸ Wstrzymaj</button>
-            `;
+            actionsHtml += `<button type="button" class="btn" onclick="suspendTransaction(${id})">⏸ Wstrzymaj</button>`;
         }
         
-        showModal('transaction');
+        detailPanel.actions.innerHTML = actionsHtml;
+        detailPanel.formActions.innerHTML = '';
+        
+        // Show status section
+        const statusSection = detailPanel.form.querySelector('input[name="status"]')?.closest('fieldset');
+        if (statusSection) statusSection.style.display = 'block';
+        
+        showDetailContent();
+    } catch (error) {
+        alert('Błąd: ' + error.message);
+    }
+}
+
+async function showEditForm(id) {
+    try {
+        const response = await apiCall(`/transactions/${id}`);
+        const tx = await response.json();
+        
+        currentViewMode = 'edit';
+        currentTransactionId = id;
+        
+        // Fill form with data
+        fillFormWithTransaction(tx);
+        
+        // Make editable fields writable
+        detailPanel.form.querySelectorAll('input, select, textarea').forEach(el => {
+            const name = el.name;
+            // Keep some fields readonly
+            if (['messageId', 'paymentInstructionId', 'creationDateTime', 'status', 'createdAt', 'authorizedBy', 'approvedBy', 'rejectionReason'].includes(name)) {
+                el.setAttribute('readonly', true);
+                el.setAttribute('disabled', true);
+            } else {
+                el.removeAttribute('readonly');
+                el.removeAttribute('disabled');
+            }
+        });
+        
+        // Set title and actions
+        detailPanel.title.textContent = `✏️ Edycja transakcji #${id}`;
+        detailPanel.actions.innerHTML = `
+            <button type="button" class="btn" onclick="showViewForm(${id})">Anuluj</button>
+        `;
+        detailPanel.formActions.innerHTML = `
+            <button type="submit" class="btn btn-primary">Zapisz zmiany</button>
+        `;
+        
+        // Show status section
+        const statusSection = detailPanel.form.querySelector('input[name="status"]')?.closest('fieldset');
+        if (statusSection) statusSection.style.display = 'block';
+        
+        showDetailContent();
+    } catch (error) {
+        alert('Błąd: ' + error.message);
+    }
+}
+
+function fillFormWithTransaction(tx) {
+    const form = detailPanel.form;
+    
+    // Helper to set value
+    const setValue = (name, value) => {
+        const el = form.querySelector(`[name="${name}"]`);
+        if (el) {
+            if (el.type === 'datetime-local' && value) {
+                // Convert timestamp to datetime-local format
+                el.value = new Date(value).toISOString().slice(0, 16);
+            } else if (el.type === 'date' && value) {
+                el.value = value;
+            } else {
+                el.value = value || '';
+            }
+        }
+    };
+    
+    // Header
+    setValue('messageId', tx.messageId);
+    setValue('paymentInstructionId', tx.paymentInstructionId);
+    setValue('creationDateTime', tx.creationDateTime);
+    setValue('paymentMethod', tx.paymentMethod);
+    
+    // Amount
+    setValue('amount', tx.amount);
+    setValue('currency', tx.currency);
+    setValue('valueDate', tx.valueDate);
+    setValue('requestedExecutionDate', tx.requestedExecutionDate);
+    setValue('chargeBearer', tx.chargeBearer);
+    
+    // Debtor
+    setValue('debtorName', tx.debtorName);
+    setValue('debtorLegalName', tx.debtorLegalName);
+    setValue('debtorAccountIban', tx.debtorAccountIban);
+    setValue('debtorAgentBic', tx.debtorAgentBic);
+    setValue('debtorAddressLine', tx.debtorAddressLine);
+    setValue('debtorCountry', tx.debtorCountry);
+    
+    // Creditor
+    setValue('creditorName', tx.creditorName);
+    setValue('creditorLegalName', tx.creditorLegalName);
+    setValue('creditorAccountIban', tx.creditorAccountIban);
+    setValue('creditorAgentBic', tx.creditorAgentBic);
+    setValue('creditorAddressLine', tx.creditorAddressLine);
+    setValue('creditorCountry', tx.creditorCountry);
+    
+    // Remittance
+    setValue('remittanceUnstructured', tx.remittanceUnstructured);
+    setValue('remittanceReference', tx.remittanceReference);
+    setValue('remittanceStructuredType', tx.remittanceStructuredType);
+    setValue('purposeCode', tx.purposeCode);
+    setValue('transactionId', tx.transactionId);
+    
+    // Status
+    setValue('status', formatStatus(tx.status));
+    setValue('createdAt', tx.createdAt);
+    setValue('authorizedBy', tx.authorizedBy);
+    setValue('approvedBy', tx.approvedBy);
+    setValue('rejectionReason', tx.rejectionReason);
+    
+    // Show rejection reason if exists
+    const rejectionRow = document.getElementById('rejection-row');
+    if (tx.rejectionReason) {
+        rejectionRow.style.display = 'flex';
+    } else {
+        rejectionRow.style.display = 'none';
+    }
+}
+
+async function handleFormSubmit(e) {
+    e.preventDefault();
+    
+    if (currentViewMode === 'create') {
+        await createTransaction();
+    } else if (currentViewMode === 'edit') {
+        await updateTransaction();
+    }
+}
+
+async function createTransaction() {
+    const form = detailPanel.form;
+    const formData = new FormData(form);
+    const data = {};
+    
+    formData.forEach((value, key) => {
+        if (value) data[key] = value;
+    });
+    
+    // Set defaults
+    data.messageType = 'pain.001';
+    data.paymentMethod = data.paymentMethod || 'TRN';
+    data.chargeBearer = data.chargeBearer || 'SLEV';
+    
+    try {
+        const response = await apiCall('/transactions', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            const tx = await response.json();
+            loadTransactions();
+            loadStatusCounts();
+            showViewForm(tx.id);
+        } else {
+            const error = await response.json();
+            alert('Błąd: ' + (error.error || 'Nie udało się utworzyć transakcji'));
+        }
+    } catch (error) {
+        alert('Błąd: ' + error.message);
+    }
+}
+
+async function updateTransaction() {
+    const form = detailPanel.form;
+    const formData = new FormData(form);
+    const data = {};
+    
+    formData.forEach((value, key) => {
+        if (value) data[key] = value;
+    });
+    
+    try {
+        const response = await apiCall(`/transactions/${currentTransactionId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+                amount: data.amount,
+                valueDate: data.valueDate,
+                paymentTitle: data.remittanceUnstructured
+            })
+        });
+        
+        if (response.ok) {
+            loadTransactions();
+            loadStatusCounts();
+            showViewForm(currentTransactionId);
+        } else {
+            const error = await response.json();
+            alert('Błąd: ' + (error.error || 'Nie udało się zapisać'));
+        }
     } catch (error) {
         alert('Błąd: ' + error.message);
     }
@@ -337,9 +433,9 @@ async function approveTransaction(id) {
     try {
         const response = await apiCall(`/transactions/${id}/approve`, { method: 'POST' });
         if (response.ok) {
-            hideModal('transaction');
             loadTransactions();
             loadStatusCounts();
+            showViewForm(id);
         } else {
             const data = await response.json();
             alert('Błąd: ' + (data.error || 'Nie udało się zatwierdzić'));
@@ -359,9 +455,9 @@ async function rejectTransaction(id) {
             body: JSON.stringify({ reason })
         });
         if (response.ok) {
-            hideModal('transaction');
             loadTransactions();
             loadStatusCounts();
+            showViewForm(id);
         } else {
             const data = await response.json();
             alert('Błąd: ' + (data.error || 'Nie udało się odrzucić'));
@@ -375,9 +471,9 @@ async function suspendTransaction(id) {
     try {
         const response = await apiCall(`/transactions/${id}/suspend`, { method: 'POST' });
         if (response.ok) {
-            hideModal('transaction');
             loadTransactions();
             loadStatusCounts();
+            showViewForm(id);
         } else {
             const data = await response.json();
             alert('Błąd: ' + (data.error || 'Nie udało się wstrzymać'));
@@ -391,9 +487,9 @@ async function resumeTransaction(id) {
     try {
         const response = await apiCall(`/transactions/${id}/resume`, { method: 'POST' });
         if (response.ok) {
-            hideModal('transaction');
             loadTransactions();
             loadStatusCounts();
+            showViewForm(id);
         } else {
             const data = await response.json();
             alert('Błąd: ' + (data.error || 'Nie udało się wznowić'));
@@ -403,124 +499,117 @@ async function resumeTransaction(id) {
     }
 }
 
-async function editTransaction(id) {
+// Transactions List
+async function loadTransactions() {
+    const listEl = document.getElementById('transactions-list');
+    listEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+    
     try {
-        const response = await apiCall(`/transactions/${id}`);
-        const tx = await response.json();
+        let url = `/transactions?page=${currentPage}&size=20`;
+        if (currentFilter) {
+            url = `/transactions/status/${currentFilter}`;
+        }
         
-        const form = document.getElementById('edit-transaction-form');
-        form.id.value = tx.id;
-        form.amount.value = tx.amount;
-        form.valueDate.value = tx.valueDate;
-        form.paymentTitle.value = tx.paymentTitle || '';
+        const response = await apiCall(url);
+        const transactions = await response.json();
         
-        hideModal('transaction');
-        showModal('editTransaction');
+        if (!transactions || transactions.length === 0) {
+            listEl.innerHTML = '<div class="empty-state"><p>Brak transakcji</p></div>';
+            return;
+        }
+        
+        listEl.innerHTML = transactions.map(tx => `
+            <div class="transaction-item ${currentTransactionId === tx.id ? 'active' : ''}" onclick="showViewForm(${tx.id})">
+                <div class="tx-id">#${tx.id}</div>
+                <div class="tx-parties">
+                    <div class="party-row">
+                        <span>${escapeHtml(tx.debtorName || tx.senderName || '-')}</span>
+                    </div>
+                    <div class="party-row">
+                        <span>→ ${escapeHtml(tx.creditorName || tx.receiverName || '-')}</span>
+                    </div>
+                </div>
+                <div class="tx-amount">${formatAmount(tx.amount)} ${tx.currency}</div>
+            </div>
+        `).join('');
+        
+        // Update pagination
+        document.getElementById('page-info').textContent = currentPage + 1;
     } catch (error) {
-        alert('Błąd: ' + error.message);
+        listEl.innerHTML = `<div class="loading"><p style="color: var(--accent-danger)">${error.message}</p></div>`;
     }
 }
 
-async function handleEditTransaction(e) {
-    e.preventDefault();
-    
-    const form = e.target;
-    const id = form.id.value;
-    const updates = {};
-    
-    if (form.amount.value) updates.amount = form.amount.value;
-    if (form.valueDate.value) updates.valueDate = form.valueDate.value;
-    if (form.paymentTitle.value) updates.paymentTitle = form.paymentTitle.value;
-    
+// Status Flow
+async function loadStatusCounts() {
     try {
-        const response = await apiCall(`/transactions/${id}`, {
-            method: 'PATCH',
-            body: JSON.stringify(updates)
-        });
-        
-        if (response.ok) {
-            hideModal('editTransaction');
-            loadTransactions();
-            loadStatusCounts();
-        } else {
-            const data = await response.json();
-            alert('Błąd: ' + (data.error || 'Nie udało się zapisać'));
-        }
+        const response = await apiCall('/transactions/status-counts');
+        const counts = await response.json();
+        renderStatusFlow(counts);
     } catch (error) {
-        alert('Błąd: ' + error.message);
+        console.error('Error loading status counts:', error);
     }
 }
 
-async function handleNewTransaction(e) {
-    e.preventDefault();
+function renderStatusFlow(counts) {
+    const container = document.getElementById('status-flow-diagram');
     
-    const form = e.target;
-    const data = {
-        // Header
-        messageId: form.messageId.value || null,
-        messageType: 'pain.001',
-        paymentInstructionId: form.paymentInstructionId.value || null,
-        creationDateTime: form.creationDateTime.value ? new Date(form.creationDateTime.value).toISOString() : null,
-        paymentMethod: form.paymentMethod.value || 'TRN',
-        
-        // Amount
-        amount: form.amount.value,
-        currency: form.currency.value,
-        valueDate: form.valueDate.value,
-        requestedExecutionDate: form.requestedExecutionDate.value || null,
-        chargeBearer: form.chargeBearer.value || 'SLEV',
-        batchBooking: form.batchBooking.value === 'true',
-        
-        // Debtor
-        debtorName: form.debtorName.value || null,
-        debtorLegalName: form.debtorLegalName.value || null,
-        debtorAccountIban: form.debtorAccountIban.value || null,
-        debtorAgentBic: form.debtorAgentBic.value || null,
-        debtorAddressLine: form.debtorAddressLine.value || null,
-        debtorCountry: form.debtorCountry.value || null,
-        
-        // Creditor
-        creditorName: form.creditorName.value || null,
-        creditorLegalName: form.creditorLegalName.value || null,
-        creditorAccountIban: form.creditorAccountIban.value || null,
-        creditorAgentBic: form.creditorAgentBic.value || null,
-        creditorAddressLine: form.creditorAddressLine.value || null,
-        creditorCountry: form.creditorCountry.value || null,
-        
-        // Remittance
-        remittanceUnstructured: form.remittanceUnstructured.value || null,
-        remittanceReference: form.remittanceReference.value || null,
-        remittanceStructuredType: form.remittanceStructuredType.value || null,
-        
-        // Purpose
-        purposeCode: form.purposeCode.value || null,
-        transactionId: form.transactionId.value || null,
-        
-        // Ultimate Parties
-        ultimateDebtorName: form.ultimateDebtorName.value || null,
-        ultimateDebtorAccountIban: form.ultimateDebtorAccountIban.value || null,
-        ultimateCreditorName: form.ultimateCreditorName.value || null,
-        ultimateCreditorAccountIban: form.ultimateCreditorAccountIban.value || null,
-    };
+    const mainFlow = [
+        { key: 'RECEIVED', label: 'Odebrane' },
+        { key: 'VALIDATED', label: 'Zwalidowane' },
+        { key: 'AUTHORIZING', label: 'Autoryzacja' },
+        { key: 'AUTHORIZED', label: 'Autoryzowane' },
+        { key: 'PENDING_APPROVAL', label: 'Oczekuje' },
+        { key: 'APPROVED', label: 'Zatwierdzone' },
+        { key: 'SENT_TO_CLEARING', label: 'Wysłane' },
+        { key: 'COMPLETED', label: 'Zakończone' }
+    ];
     
-    try {
-        const response = await apiCall('/transactions', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-        
-        if (response.ok) {
-            hideModal('newTransaction');
-            form.reset();
-            loadTransactions();
-            loadStatusCounts();
-        } else {
-            const error = await response.json();
-            alert('Błąd: ' + (error.error || 'Nie udało się utworzyć transakcji'));
-        }
-    } catch (error) {
-        alert('Błąd: ' + error.message);
+    const secondaryFlow = [
+        { key: 'VALIDATION_FAILED', label: 'Błąd' },
+        { key: 'AUTHORIZATION_FAILED', label: 'Błąd' },
+        { key: 'REJECTED', label: 'Odrzucone' },
+        { key: 'SUSPENDED', label: 'Wstrzymane' },
+        { key: 'FAILED', label: 'Failed' }
+    ];
+    
+    let html = '';
+    
+    mainFlow.forEach((status) => {
+        const count = counts[status.key] || 0;
+        const isActive = currentFilter === status.key;
+        html += `
+            <div class="status-box ${isActive ? 'active' : ''}" data-status="${status.key}" onclick="filterByStatus('${status.key}')">
+                <span class="status-count">${count}</span>
+            </div>
+        `;
+    });
+    
+    html += '<span style="color: var(--text-muted); font-size: 10px;">|</span>';
+    
+    secondaryFlow.forEach((status) => {
+        const count = counts[status.key] || 0;
+        const isActive = currentFilter === status.key;
+        html += `
+            <div class="status-box ${isActive ? 'active' : ''}" data-status="${status.key}" onclick="filterByStatus('${status.key}')">
+                <span class="status-count">${count}</span>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function filterByStatus(status) {
+    if (currentFilter === status) {
+        currentFilter = '';
+    } else {
+        currentFilter = status;
     }
+    document.getElementById('status-filter').value = currentFilter;
+    currentPage = 0;
+    loadTransactions();
+    loadStatusCounts();
 }
 
 // Helpers
@@ -550,34 +639,6 @@ function formatAmount(amount) {
     }).format(amount);
 }
 
-function formatIban(iban) {
-    if (!iban) return '-';
-    // Format IBAN with spaces every 4 characters
-    return iban.replace(/\s/g, '').match(/.{1,4}/g)?.join(' ') || iban;
-}
-
-function formatDate(dateStr) {
-    if (!dateStr) return '-';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('pl-PL', { 
-        day: '2-digit', 
-        month: '2-digit', 
-        year: 'numeric' 
-    });
-}
-
-function formatDateTime(dateStr) {
-    if (!dateStr) return '-';
-    const date = new Date(dateStr);
-    return date.toLocaleString('pl-PL', { 
-        day: '2-digit', 
-        month: '2-digit', 
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-}
-
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -585,112 +646,12 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Status Flow Diagram
-async function loadStatusCounts() {
-    try {
-        const response = await apiCall('/transactions/status-counts');
-        const counts = await response.json();
-        renderStatusFlow(counts);
-    } catch (error) {
-        console.error('Error loading status counts:', error);
-    }
-}
-
-function renderStatusFlow(counts) {
-    const container = document.getElementById('status-flow-diagram');
-    
-    // Main flow order
-    const mainFlow = [
-        { key: 'RECEIVED', label: 'Odebrane' },
-        { key: 'VALIDATED', label: 'Zwalidowane' },
-        { key: 'AUTHORIZING', label: 'Autoryzacja' },
-        { key: 'AUTHORIZED', label: 'Autoryzowane' },
-        { key: 'PENDING_APPROVAL', label: 'Oczekuje' },
-        { key: 'APPROVED', label: 'Zatwierdzone' },
-        { key: 'SENT_TO_CLEARING', label: 'Wysłane' },
-        { key: 'COMPLETED', label: 'Zakończone' }
-    ];
-    
-    // Secondary statuses
-    const secondaryFlow = [
-        { key: 'VALIDATION_FAILED', label: 'Błąd walidacji' },
-        { key: 'AUTHORIZATION_FAILED', label: 'Błąd autoryzacji' },
-        { key: 'REJECTED', label: 'Odrzucone' },
-        { key: 'SUSPENDED', label: 'Wstrzymane' },
-        { key: 'FAILED', label: 'Failed' }
-    ];
-    
-    let html = '';
-    
-    // Main flow with arrows
-    mainFlow.forEach((status, index) => {
-        const count = counts[status.key] || 0;
-        const isActive = currentFilter === status.key;
-        html += `
-            <div class="status-box ${isActive ? 'active' : ''}" 
-                 data-status="${status.key}"
-                 onclick="filterByStatus('${status.key}')">
-                <span class="status-name">${status.label}</span>
-                <span class="status-count">${count}</span>
-            </div>
-        `;
-        if (index < mainFlow.length - 1) {
-            html += '<span class="status-arrow">›</span>';
-        }
-    });
-    
-    html += '<div style="width:100%; height:8px;"></div>';
-    
-    // Secondary flow
-    secondaryFlow.forEach((status, index) => {
-        const count = counts[status.key] || 0;
-        const isActive = currentFilter === status.key;
-        html += `
-            <div class="status-box ${isActive ? 'active' : ''}" 
-                 data-status="${status.key}"
-                 onclick="filterByStatus('${status.key}')">
-                <span class="status-name">${status.label}</span>
-                <span class="status-count">${count}</span>
-            </div>
-        `;
-        if (index < secondaryFlow.length - 1) {
-            html += '<span class="status-arrow">›</span>';
-        }
-    });
-    
-    container.innerHTML = html;
-    
-    // Show/hide clear button
-    const clearBtn = document.getElementById('clear-filter-btn');
-    if (currentFilter) {
-        clearBtn.classList.add('visible');
-    } else {
-        clearBtn.classList.remove('visible');
-    }
-}
-
-function filterByStatus(status) {
-    currentFilter = status;
-    document.getElementById('status-filter').value = status;
-    currentPage = 0;
-    loadTransactions();
-    loadStatusCounts();
-}
-
-function clearStatusFilter() {
-    currentFilter = '';
-    document.getElementById('status-filter').value = '';
-    currentPage = 0;
-    loadTransactions();
-    loadStatusCounts();
-}
-
 // Make functions global
-window.viewTransaction = viewTransaction;
+window.showViewForm = showViewForm;
+window.showEditForm = showEditForm;
+window.showCreateForm = showCreateForm;
 window.approveTransaction = approveTransaction;
 window.rejectTransaction = rejectTransaction;
 window.suspendTransaction = suspendTransaction;
 window.resumeTransaction = resumeTransaction;
-window.editTransaction = editTransaction;
 window.filterByStatus = filterByStatus;
-window.clearStatusFilter = clearStatusFilter;

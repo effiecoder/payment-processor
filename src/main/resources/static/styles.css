@@ -834,3 +834,262 @@ body::before {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--accent-primary);
 }
+
+/* Master-Detail Layout */
+.master-detail {
+    display: flex;
+    gap: 20px;
+    flex: 1;
+    min-height: 0;
+}
+
+/* Master Panel (Left) */
+.master-panel {
+    width: 380px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.toolbar-compact {
+    display: flex;
+    gap: 8px;
+}
+
+.toolbar-compact select {
+    flex: 1;
+    padding: 10px 12px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.toolbar-compact .btn-sm {
+    padding: 10px 14px;
+    font-size: 14px;
+}
+
+/* Status Flow Compact */
+.status-flow-compact {
+    background: var(--bg-glass);
+    backdrop-filter: var(--blur-glass);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    overflow-x: auto;
+}
+
+.status-flow-compact .status-flow-diagram {
+    display: flex;
+    gap: 4px;
+    flex-wrap: nowrap;
+}
+
+.status-flow-compact .status-box {
+    padding: 6px 8px;
+    min-width: auto;
+}
+
+.status-flow-compact .status-name {
+    font-size: 9px;
+    display: none;
+}
+
+.status-flow-compact .status-count {
+    font-size: 12px;
+    padding: 1px 5px;
+}
+
+/* Transactions List Compact */
+.transactions-list-compact {
+    flex: 1;
+    background: var(--bg-glass);
+    backdrop-filter: var(--blur-glass);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    overflow-y: auto;
+    min-height: 300px;
+}
+
+.transactions-list-compact .transaction-item {
+    padding: 10px 12px;
+    gap: 8px;
+    grid-template-columns: 40px 1fr 70px;
+}
+
+.transactions-list-compact .tx-id {
+    font-size: 10px;
+}
+
+.transactions-list-compact .tx-parties {
+    font-size: 11px;
+    overflow: hidden;
+}
+
+.transactions-list-compact .party-row {
+    gap: 4px;
+}
+
+.transactions-list-compact .party-label {
+    display: none;
+}
+
+.transactions-list-compact .party-account {
+    display: none;
+}
+
+.transactions-list-compact .tx-amount {
+    font-size: 13px;
+    text-align: right;
+}
+
+.transactions-list-compact .tx-status {
+    display: none;
+}
+
+.transactions-list-compact .tx-date {
+    display: none;
+}
+
+/* Pagination Compact */
+.pagination-compact {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    padding: 8px;
+}
+
+.pagination-compact button {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.pagination-compact span {
+    font-size: 12px;
+}
+
+/* Detail Panel (Right) */
+.detail-panel {
+    flex: 1;
+    background: var(--bg-glass);
+    backdrop-filter: var(--blur-glass);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.detail-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 40px;
+}
+
+.detail-empty .icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.3;
+}
+
+.detail-empty p {
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.detail-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.detail-header h2 {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.detail-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* Form in Detail Panel */
+.detail-content .form-section {
+    margin-bottom: 12px;
+    padding: 12px;
+}
+
+.detail-content .form-section legend {
+    font-size: 12px;
+    margin-bottom: 10px;
+}
+
+.detail-content .form-row {
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.detail-content .form-group {
+    margin-bottom: 0;
+}
+
+.detail-content .form-group label {
+    font-size: 11px;
+    margin-bottom: 4px;
+}
+
+.detail-content .form-group input,
+.detail-content .form-group select,
+.detail-content .form-group textarea {
+    padding: 8px 10px;
+    font-size: 12px;
+}
+
+.status-readonly {
+    background: var(--bg-glass) !important;
+    border-color: var(--border-subtle) !important;
+    font-weight: 600;
+}
+
+.form-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    padding-top: 16px;
+    margin-top: 12px;
+    border-top: 1px solid var(--border-subtle);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .master-detail {
+        flex-direction: column;
+    }
+    
+    .master-panel {
+        width: 100%;
+        max-height: 50vh;
+    }
+    
+    .detail-panel {
+        min-height: 50vh;
+    }
+}
