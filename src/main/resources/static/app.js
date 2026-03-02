@@ -211,8 +211,16 @@ async function loadTransactions() {
             <div class="transaction-item" onclick="viewTransaction(${tx.id})">
                 <div class="tx-id">#${tx.id}</div>
                 <div class="tx-parties">
-                    <span class="sender">${escapeHtml(tx.senderName || tx.senderAccount)}</span>
-                    <span class="receiver">→ ${escapeHtml(tx.receiverName || tx.receiverAccount)}</span>
+                    <div class="party-row">
+                        <span class="party-label">Od:</span>
+                        <span class="party-name">${escapeHtml(tx.senderName || '-')}</span>
+                        <span class="party-account">${formatIban(tx.senderAccount)}</span>
+                    </div>
+                    <div class="party-row">
+                        <span class="party-label">Do:</span>
+                        <span class="party-name">${escapeHtml(tx.receiverName || '-')}</span>
+                        <span class="party-account">${formatIban(tx.receiverAccount)}</span>
+                    </div>
                 </div>
                 <div class="tx-amount">${formatAmount(tx.amount)} ${tx.currency}</div>
                 <div class="tx-status status-${tx.status}">${formatStatus(tx.status)}</div>
@@ -505,6 +513,12 @@ function formatAmount(amount) {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2 
     }).format(amount);
+}
+
+function formatIban(iban) {
+    if (!iban) return '-';
+    // Format IBAN with spaces every 4 characters
+    return iban.replace(/\s/g, '').match(/.{1,4}/g)?.join(' ') || iban;
 }
 
 function formatDate(dateStr) {
