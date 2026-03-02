@@ -838,18 +838,48 @@ body::before {
 /* Master-Detail Layout */
 .master-detail {
     display: flex;
-    gap: 20px;
+    gap: 0;
     flex: 1;
     min-height: 0;
+    position: relative;
 }
 
-/* Master Panel (Left) */
+/* Master Panel (Left) - Full width by default */
 .master-panel {
-    width: 380px;
-    flex-shrink: 0;
+    width: 100%;
+    flex: 1;
     display: flex;
     flex-direction: column;
     gap: 12px;
+    transition: width var(--transition-normal);
+}
+
+.master-panel.has-detail {
+    width: 380px;
+    flex-shrink: 0;
+}
+
+/* Detail Panel (Right) - Slide out */
+.detail-panel {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 0;
+    background: var(--bg-secondary);
+    border-left: 1px solid var(--border-subtle);
+    overflow: hidden;
+    transition: width var(--transition-normal);
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+}
+
+.detail-panel.open {
+    width: 55%;
+    min-width: 500px;
+    max-width: 800px;
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
 }
 
 .toolbar-compact {
@@ -911,7 +941,11 @@ body::before {
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
     overflow-y: auto;
-    min-height: 300px;
+    min-height: 400px;
+}
+
+.master-panel:not(.has-detail) .transactions-list-compact {
+    max-height: calc(100vh - 200px);
 }
 
 .transactions-list-compact .transaction-item {

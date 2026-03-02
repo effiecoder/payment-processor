@@ -150,9 +150,13 @@ function showMainScreen() {
 function showDetailEmpty() {
     detailPanel.empty.classList.remove('hidden');
     detailPanel.content.classList.add('hidden');
+    document.getElementById('detail-panel').classList.remove('open');
+    document.getElementById('master-panel').classList.remove('has-detail');
 }
 
 function showDetailContent() {
+    document.getElementById('detail-panel').classList.add('open');
+    document.getElementById('master-panel').classList.add('has-detail');
     detailPanel.empty.classList.add('hidden');
     detailPanel.content.classList.remove('hidden');
 }
