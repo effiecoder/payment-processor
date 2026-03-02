@@ -51,26 +51,26 @@ public class TransactionService {
 
         // Validate amount
         var amountResult = amountValidator.validate(new java.math.BigDecimal(amount));
-        if (!amountResult.valid()) {
-            throw new IllegalArgumentException("Invalid amount: " + amountResult.errorMessage());
+        if (!amountResult.isValid()) {
+            throw new IllegalArgumentException("Invalid amount: " + amountResult.getErrorMessage());
         }
 
         // Validate sender IBAN
         var senderResult = ibanValidator.validate(senderAccount);
-        if (!senderResult.valid()) {
-            throw new IllegalArgumentException("Invalid sender IBAN: " + senderResult.errorMessage());
+        if (!senderResult.isValid()) {
+            throw new IllegalArgumentException("Invalid sender IBAN: " + senderResult.getErrorMessage());
         }
 
         // Validate receiver IBAN
         var receiverResult = ibanValidator.validate(receiverAccount);
-        if (!receiverResult.valid()) {
-            throw new IllegalArgumentException("Invalid receiver IBAN: " + receiverResult.errorMessage());
+        if (!receiverResult.isValid()) {
+            throw new IllegalArgumentException("Invalid receiver IBAN: " + receiverResult.getErrorMessage());
         }
 
         // Validate value date
         var dateResult = dateValidator.validate(valueDate);
-        if (!dateResult.valid()) {
-            throw new IllegalArgumentException("Invalid value date: " + dateResult.errorMessage());
+        if (!dateResult.isValid()) {
+            throw new IllegalArgumentException("Invalid value date: " + dateResult.getErrorMessage());
         }
 
         // Validate payment title (basic XSS protection)
@@ -126,16 +126,16 @@ public class TransactionService {
 
         if (amount != null) {
             var result = amountValidator.validate(new java.math.BigDecimal(amount));
-            if (!result.valid()) {
-                throw new IllegalArgumentException("Invalid amount: " + result.errorMessage());
+            if (!result.isValid()) {
+                throw new IllegalArgumentException("Invalid amount: " + result.getErrorMessage());
             }
             tx.setAmount(new java.math.BigDecimal(amount));
         }
 
         if (valueDate != null) {
             var result = dateValidator.validate(valueDate);
-            if (!result.valid()) {
-                throw new IllegalArgumentException("Invalid value date: " + result.errorMessage());
+            if (!result.isValid()) {
+                throw new IllegalArgumentException("Invalid value date: " + result.getErrorMessage());
             }
             tx.setValueDate(valueDate);
         }

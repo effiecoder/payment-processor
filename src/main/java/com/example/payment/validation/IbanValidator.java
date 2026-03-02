@@ -1,9 +1,10 @@
 package com.example.payment.validation;
 
-import java.util.Arrays;
+import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.Map;
 
+@Component
 public class IbanValidator {
 
     // Country code to IBAN length mapping
@@ -167,13 +168,29 @@ public class IbanValidator {
         return remainder == 1;
     }
 
-    public record ValidationResult(boolean valid, String errorMessage) {
+    public static class ValidationResult {
+        private final boolean valid;
+        private final String errorMessage;
+
+        private ValidationResult(boolean valid, String errorMessage) {
+            this.valid = valid;
+            this.errorMessage = errorMessage;
+        }
+
         public static ValidationResult valid() {
             return new ValidationResult(true, null);
         }
 
         public static ValidationResult invalid(String message) {
             return new ValidationResult(false, message);
+        }
+
+        public boolean isValid() {
+            return valid;
+        }
+
+        public String getErrorMessage() {
+            return errorMessage;
         }
     }
 }

@@ -1,7 +1,9 @@
 package com.example.payment.validation;
 
+import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 
+@Component
 public class AmountValidator {
 
     private static final BigDecimal MIN_AMOUNT = BigDecimal.valueOf(0.01);
@@ -30,13 +32,29 @@ public class AmountValidator {
         return ValidationResult.valid();
     }
 
-    public record ValidationResult(boolean valid, String errorMessage) {
+    public static class ValidationResult {
+        private final boolean valid;
+        private final String errorMessage;
+
+        private ValidationResult(boolean valid, String errorMessage) {
+            this.valid = valid;
+            this.errorMessage = errorMessage;
+        }
+
         public static ValidationResult valid() {
             return new ValidationResult(true, null);
         }
 
         public static ValidationResult invalid(String message) {
             return new ValidationResult(false, message);
+        }
+
+        public boolean isValid() {
+            return valid;
+        }
+
+        public String getErrorMessage() {
+            return errorMessage;
         }
     }
 }

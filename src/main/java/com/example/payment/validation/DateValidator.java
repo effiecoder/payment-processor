@@ -1,8 +1,10 @@
 package com.example.payment.validation;
 
+import org.springframework.stereotype.Component;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 
+@Component
 public class DateValidator {
 
     private static final long MAX_DAYS_IN_FUTURE = 365;
@@ -28,13 +30,29 @@ public class DateValidator {
         return ValidationResult.valid();
     }
 
-    public record ValidationResult(boolean valid, String errorMessage) {
+    public static class ValidationResult {
+        private final boolean valid;
+        private final String errorMessage;
+
+        private ValidationResult(boolean valid, String errorMessage) {
+            this.valid = valid;
+            this.errorMessage = errorMessage;
+        }
+
         public static ValidationResult valid() {
             return new ValidationResult(true, null);
         }
 
         public static ValidationResult invalid(String message) {
             return new ValidationResult(false, message);
+        }
+
+        public boolean isValid() {
+            return valid;
+        }
+
+        public String getErrorMessage() {
+            return errorMessage;
         }
     }
 }
