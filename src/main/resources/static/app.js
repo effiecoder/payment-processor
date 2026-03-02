@@ -159,6 +159,7 @@ function closeDetail() {
 }
 
 function openDetail() {
+    console.log('openDetail called', detailPanel.panel, transactionsPanel);
     detailPanel.panel.classList.add('open');
     transactionsPanel.classList.add('has-detail');
 }
