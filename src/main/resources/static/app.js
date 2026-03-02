@@ -28,22 +28,17 @@ const transactionsPanel = document.getElementById('transactions-panel');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM loaded, initializing...');
     if (token) {
-        console.log('Token found, showing main screen');
         showMainScreen();
         loadTransactions();
         loadStatusCounts();
     } else {
-        console.log('No token, showing login');
         showLoginScreen();
     }
     setupEventListeners();
-    console.log('Event listeners set up');
 });
 
 function setupEventListeners() {
-    console.log('Setting up event listeners...');
     // Login
     document.getElementById('login-form').addEventListener('submit', handleLogin);
     document.getElementById('logout-btn').addEventListener('click', handleLogout);
@@ -73,20 +68,13 @@ function setupEventListeners() {
     });
     
     // New Transaction
-    const newBtn = document.getElementById('new-transaction-btn');
-    console.log('New transaction button:', newBtn);
-    newBtn.addEventListener('click', () => {
-        console.log('New transaction button clicked');
-        showCreateForm();
-    });
+    document.getElementById('new-transaction-btn').addEventListener('click', showCreateForm);
     
     // Close detail
     detailPanel.closeBtn.addEventListener('click', closeDetail);
     
     // Form submit
     detailPanel.form.addEventListener('submit', handleFormSubmit);
-    
-    console.log('Event listeners set up complete');
 }
 
 // Auth
@@ -159,21 +147,12 @@ function closeDetail() {
 }
 
 function openDetail() {
-    console.log('openDetail called', detailPanel.panel, transactionsPanel);
-    console.log('panel classList:', detailPanel.panel.classList);
-    console.log('panel style:', detailPanel.panel.style.cssText);
-    console.log('content classList:', detailPanel.content.classList);
     detailPanel.panel.classList.add('open');
     transactionsPanel.classList.add('has-detail');
-    console.log('after add - panel classList:', detailPanel.panel.classList);
-    console.log('after add - content classList:', detailPanel.content.classList);
-    console.log('empty hidden:', detailPanel.empty.classList.contains('hidden'));
-    console.log('content hidden:', detailPanel.content.classList.contains('hidden'));
 }
 
 // Form Modes
 function showCreateForm() {
-    console.log('showCreateForm called');
     currentViewMode = 'create';
     currentTransactionId = null;
     

@@ -885,6 +885,15 @@ body::before {
     width: 0;
     background: var(--bg-secondary);
     border-left: 1px solid var(--border-subtle);
+    overflow: hidden;
+    transition: width 0.3s ease;
+    z-index: 100;
+}
+
+.detail-panel.open {
+    width: 55%;
+    min-width: 400px;
+}
 
 /* Main Panel */
 .main-panel {
@@ -1033,11 +1042,6 @@ body::before {
     overflow: hidden;
     transition: width var(--transition-normal);
     background: var(--bg-secondary);
-}
-
-.detail-panel.open {
-    width: 55%;
-    min-width: 400px;
 }
 
 .detail-empty {
